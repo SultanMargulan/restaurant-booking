@@ -1,0 +1,24 @@
+/* AdminRestaurantPage.css */
+.admin-container {
+    max-width: 800px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+    margin: 20px auto;
+  }
+  
+  .admin-container h2 {
+    text-align: center;
+  }
+  
+  .admin-container .list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .admin-container button {
+    margin-left: 10px;
+  }
+  

@@ -1,0 +1,43 @@
+/* Restaurant List */
+.restaurant-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.restaurant-card {
+  width: 30%;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  transition: transform 0.2s ease-in-out;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+}
+
+.restaurant-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 3px solid #007bff;
+}
+
+.restaurant-card-body {
+  padding: 15px;
+}
+
+.restaurant-card h5 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.restaurant-card p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}

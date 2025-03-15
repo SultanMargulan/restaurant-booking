@@ -1,0 +1,48 @@
+/* Hero Parallax Section */
+.hero-section {
+    position: relative;
+    height: 80vh; /* Large so it spans nearly full screen */
+    color: #fff;
+    background: url('../../public/hero-image.jpg') center center;
+    background-attachment: fixed; /* Key property for parallax */
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* optional overlay or "glass" effect: */
+    backdrop-filter: blur(2px);
+  }
+  
+  .hero-section h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    /* Fade in or appear from below on page load: */
+    animation: fadeInUp 1.5s ease forwards;
+  }
+  
+  .hero-section p {
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto;
+    animation: fadeInUp 1.5s ease forwards;
+    animation-delay: 0.3s;
+  }
+  
+  /* Keyframes for subtle fade + upward movement */
+  @keyframes fadeInUp {
+    0% {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .homepage-container {
+    width: 85%; /* Uses 80% of the viewport width */
+    margin: 0 auto; /* Centers the content */
+  }
+    

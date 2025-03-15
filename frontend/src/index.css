@@ -1,0 +1,59 @@
+/* index.css - Global Enhancements */
+:root {
+  --primary-color: #4CAF50;
+  --secondary-color: #FF9800;
+  --background-color: #f5f7fa;
+  --text-color: #333;
+  --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: all 0.3s ease-in-out;
+}
+
+/* Smooth Animations */
+* {
+  transition: all 0.3s ease-in-out;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-weight: 600;
+  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+/* Glassmorphism UI */
+.glass-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Modern Cards */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 20px;
+  margin: 20px 0;
+  transition: 0.3s;
+}
+
+.card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}

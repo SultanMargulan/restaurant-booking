@@ -1,0 +1,58 @@
+/* Navbar.css */
+.navbar {
+  background-color: #ffffff;
+  padding: 15px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  transition: padding 0.3s ease, background-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 15px;
+}
+
+.nav-links li {
+  display: inline;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #333;
+  font-weight: 600;
+  transition: color 0.2s ease-in-out;
+}
+
+.nav-links a:hover {
+  color: #007bff;
+}
+
+.username {
+  font-weight: 600;
+  color: #333;
+}
+
+.logout-btn {
+  background-color: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #d9534f;
+  transition: color 0.2s ease-in-out;
+}
+
+.logout-btn:hover {
+  color: #c9302c;
+}
+
+/* When scrolled, reduce padding and add a subtle shadow or change color */
+.navbar.navbar-scrolled {
+    padding: 8px 20px;
+    background-color: #f8f9fa;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }

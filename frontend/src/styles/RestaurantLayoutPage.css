@@ -1,0 +1,26 @@
+.layout-container {
+  position: relative;
+  width: 800px;
+  height: 600px;
+  border: 1px solid #ccc;
+  margin: 0 auto;
+  background-color: #f8f9fa;
+  overflow: hidden;
+  /* optional: add subtle fadeIn if you want: */
+  animation: fadeIn 0.8s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.layout-container .table-item {
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.layout-container .table-item:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
