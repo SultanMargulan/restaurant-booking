@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { GiKnifeFork } from 'react-icons/gi';
+import { TbCalendarEvent } from 'react-icons/tb';
+import { FiMenu, FiX } from 'react-icons/fi';
 import '../styles/Navbar.css';
 
 function Navbar() {
   const { user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      // if user scrolls more than 50px from top
       setScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
@@ -17,33 +20,37 @@ function Navbar() {
   }, []);
 
   return (
-    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
-      <div className="container">
-        <Link className="navbar-brand" to="/">Restaurant Booking</Link>
-        <ul className="nav-links">
-          <li><NavLink to="/">Home</NavLink></li>
-          <li><NavLink to="/restaurants">Restaurants</NavLink></li>
+    <nav className={`app-navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
+      <div className="nav-container">
+        <Link to="/" className="nav-brand">
+          <GiKnifeFork size={28} />
+          <span>Mazir</span>
+        </Link>
+        
+        <div className={`nav-menu ${isOpen && 'active'}`}>
+          <NavLink to="/book" className="nav-item">
+            <TbCalendarEvent /> Book
+          </NavLink>
           {user ? (
             <>
-              <li><NavLink to="/book">Book a Table</NavLink></li>
-              <li>
-                <Link to="/profile" className="username">
-                  Hello, {user.name}
-                </Link>
-              </li>
-              <li>
-                <button className="logout-btn" onClick={logout}>
-                  Logout
-                </button>
-              </li>
+              <NavLink to="/profile" className="nav-item">
+                Hello, {user.name}
+              </NavLink>
+              <button className="nav-item logout-btn" onClick={logout}>
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <li><NavLink to="/login">Login</NavLink></li>
-              <li><NavLink to="/register">Register</NavLink></li>
+              <NavLink to="/login" className="nav-item">Login</NavLink>
+              <NavLink to="/register" className="nav-item">Register</NavLink>
             </>
           )}
-        </ul>
+        </div>
+        
+        <button className="hamburger" onClick={() => setIsOpen(!isOpen)}>
+          {isOpen ? <FiX /> : <FiMenu />}
+        </button>
       </div>
     </nav>
   );

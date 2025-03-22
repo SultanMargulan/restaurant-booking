@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axiosClient from '../services/axiosClient';
 import { useAuth } from '../contexts/AuthContext';
+import axiosClient from '../services/axiosClient';
+import { FiMapPin, FiClock } from 'react-icons/fi';
 import "../styles/RestaurantDetailsPage.css";
 
 function RestaurantDetailsPage() {
@@ -16,29 +17,24 @@ function RestaurantDetailsPage() {
   const [comment, setComment] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const detailsRes = await axiosClient.get(`/restaurants/${restaurantId}`);
-        setRestaurant(detailsRes.data);
+        setRestaurant(detailsRes.data.data);
 
         const reviewsRes = await axiosClient.get(`/restaurants/${restaurantId}/reviews`);
-        setReviews(reviewsRes.data);
+        setReviews(reviewsRes.data.data?.items || []); // Use optional chaining and proper array path
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to load restaurant details or reviews.');
+        setError(err.response?.data?.error || 'Failed to load data.');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, [restaurantId]);
-
-  useEffect(() => {
-    setAnimate(true);
-  }, []);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
@@ -57,7 +53,7 @@ function RestaurantDetailsPage() {
       });
       setSuccessMsg('Review added successfully!');
       const reviewsRes = await axiosClient.get(`/restaurants/${restaurantId}/reviews`);
-      setReviews(reviewsRes.data);
+      setReviews(reviewsRes.data.data?.items || []); // Handle nested data
 
       setRating(5);
       setComment('');
@@ -66,97 +62,124 @@ function RestaurantDetailsPage() {
     }
   };
 
+  const renderStars = (rating) => {
+    return [...Array(5)].map((_, i) => (
+      <span key={i} style={{ color: i < rating ? '#ffd700' : '#ddd' }}>★</span>
+    ));
+  };
+
   if (loading) return <div className="container mt-4">Loading...</div>;
   if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
 
+  // Add error boundary fallback
+  if (!Array.isArray(reviews)) {
+    return <div className="container mt-4 alert alert-danger">Invalid reviews data format</div>;
+  }
+
   return (
     <div className="restaurant-details-page">
-      <div className={`restaurant-details ${animate ? 'slide-in' : ''}`}>
-        {restaurant && (
-          <>
-            <img src="/path/to/some/image.jpg" alt="Restaurant" />
-            <h2>{restaurant.name}</h2>
-            <p className="description">
-              {restaurant.location} | {restaurant.cuisine}
-            </p>
-            <p>Capacity: {restaurant.capacity || 'N/A'} | Avg Price: {restaurant.average_price || 'N/A'}</p>
-
-            {restaurant.images?.length > 0 && (
-              <div className="mt-3">
-                <h5>Photos</h5>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {restaurant.images.map((imgUrl, idx) => (
-                    <img
-                      key={idx}
-                      src={imgUrl}
-                      alt="restaurant"
-                      style={{ width: '100px', height: '100px', objectFit: 'cover' }}
-                    />
-                  ))}
+      {restaurant && (
+        <div className="restaurant-details">
+          <div className="restaurant-header">
+            <img 
+              src={restaurant.images?.[0] || '/default-restaurant.jpeg'} 
+              alt={restaurant.name} 
+              className="main-image"
+            />
+            <div className="info-section">
+              <h1>{restaurant.name}</h1>
+              <div className="meta-info">
+                <p className="cuisine-badge">{restaurant.cuisine}</p>
+                <p><FiMapPin /> {restaurant.location}</p>
+                <p><FiClock /> Open until {restaurant.closing_time || '10:00 PM'}</p>
+                <div className="rating-section">
+                  {renderStars(restaurant.rating || 4)}
+                  <span>({restaurant.review_count || 0} reviews)</span>
                 </div>
               </div>
-            )}
-
-            <hr />
-            <h4>Reviews</h4>
-            {reviews.length === 0 ? (
-              <p>No reviews yet. Be the first to leave one!</p>
-            ) : (
-              <ul className="list-group">
-                {reviews.map((rev) => (
-                  <li key={rev.id} className="list-group-item">
-                    <strong>Rating:</strong> {rev.rating}/5
-                    <br />
-                    <em>{rev.comment}</em>
-                    <br />
-                    <small>
-                      By User ID #{rev.user_id}, on {' '}
-                      {rev.date_created ? new Date(rev.date_created).toLocaleString() : 'N/A'}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <hr />
-            <h5>Add a Review</h5>
-            {submitError && <div className="alert alert-danger">{submitError}</div>}
-            {successMsg && <div className="alert alert-success">{successMsg}</div>}
-
-            {user ? (
-              <form onSubmit={handleSubmitReview}>
-                <div className="mb-2">
-                  <label>Rating (1-5)</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={rating}
-                    onChange={(e) => setRating(parseInt(e.target.value))}
-                    min={1}
-                    max={5}
-                    required
-                  />
+              <div className="quick-info">
+                <div className="info-card">
+                  <h3>Capacity</h3>
+                  <p>{restaurant.capacity || 'N/A'}</p>
                 </div>
-                <div className="mb-2">
-                  <label>Comment</label>
+                <div className="info-card">
+                  <h3>Average Price</h3>
+                  <p>${restaurant.average_price || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {restaurant.images?.length > 0 && (
+            <div className="photo-gallery-section">
+              <h2>Photo Gallery</h2>
+              <div className="photo-gallery">
+                {restaurant.images.map((img, idx) => (
+                  <img key={idx} src={img} alt={`Restaurant view ${idx + 1}`} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="reviews-section">
+            <h2>Customer Reviews</h2>
+            {reviews.length === 0 ? (
+              <p className="no-reviews">No reviews yet. Be the first to share your experience!</p>
+            ) : (
+              reviews.map((rev) => (
+                <div key={rev.id} className="review-card">
+                  <div className="review-rating">{rev.rating}/5</div>
+                  <p className="review-comment">{rev.comment}</p>
+                  <div className="review-meta">
+                    <span className="review-author">User #{rev.user_id}</span>
+                    <span className="review-date">
+                      {new Date(rev.date_created).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {user && (
+            <div className="review-form">
+              <h3>Write a Review</h3>
+              {submitError && <div className="alert error">{submitError}</div>}
+              {successMsg && <div className="alert success">{successMsg}</div>}
+              <form onSubmit={handleSubmitReview}>
+                <div className="form-group">
+                  <label>Your Rating</label>
+                  <div className="star-rating">
+                    {[...Array(5)].map((_, i) => (
+                      <button 
+                        key={i} 
+                        type="button" 
+                        onClick={() => setRating(i + 1)}
+                        aria-label={`Rate ${i + 1} stars`}
+                      >
+                        {i < rating ? '★' : '☆'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-group">
                   <textarea
                     className="form-control"
-                    rows={3}
+                    rows={4}
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
+                    placeholder="Share your experience..."
                     required
                   />
                 </div>
-                <button className="btn btn-primary" type="submit">
+                <button className="btn-primary" type="submit">
                   Submit Review
                 </button>
               </form>
-            ) : (
-              <p className="text-danger">You must be logged in to post a review.</p>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

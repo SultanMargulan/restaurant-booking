@@ -1,28 +1,30 @@
 # booking_routes.py
 from flask import Blueprint, request, jsonify
 from app.extensions import db, mail
-from app.models import Booking, Restaurant, User
+from app.models import Booking, Restaurant, User, Layout
 from datetime import datetime, timedelta
 from flask_login import login_required, current_user
 from flask_mail import Message
 from sqlalchemy import func
 from app.extensions import csrf
+from app.utils.response import json_response
 
 booking_bp = Blueprint('booking', __name__, url_prefix='/api/bookings')
 
-def is_table_available_fixed(restaurant_id, table_number, booking_datetime, duration=timedelta(hours=2), total_tables=10):
-    if table_number < 1 or table_number > total_tables:
+def is_table_available(restaurant_id, layout_id, date):
+    layout = Layout.query.get(layout_id)
+    if not layout or layout.restaurant_id != restaurant_id:
         return False
-    start_time = booking_datetime
-    end_time = booking_datetime + duration
-    overlapping_bookings = Booking.query.filter_by(
-        restaurant_id=restaurant_id,
-        table_number=table_number
-    ).filter(Booking.date < end_time).all()
-    for booking in overlapping_bookings:
-        if booking.date + duration > start_time:
-            return False
-    return True
+    duration = Restaurant.query.get(restaurant_id).booking_duration
+    start = date
+    end = date + timedelta(minutes=duration)
+    overlapping = Booking.query.filter(
+        (Booking.layout_id == layout_id) &
+        (Booking.restaurant_id == restaurant_id) &
+        (Booking.date < end) &
+        (Booking.date + timedelta(minutes=duration) > start)
+    ).first()
+    return not overlapping
 
 @csrf.exempt
 @booking_bp.route('', methods=['POST'])
@@ -30,27 +32,30 @@ def book_table():
     data = request.json
     user = User.query.get(data.get('user_id'))
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return json_response(error="User not found", status=404)
     restaurant = Restaurant.query.get(data.get('restaurant_id'))
     if not restaurant:
-        return jsonify({"error": "Restaurant not found"}), 404
+        return json_response(error="Restaurant not found", status=404)
     try:
-        booking_date = datetime.strptime(data.get('date'), "%Y-%m-%dT%H:%M")
+        date_str = data.get('date')
+        if 'T' in date_str:
+            booking_date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M")
+        else:
+            booking_date = datetime.strptime(date_str, "%Y-%m-%d")
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid date format. Use YYYY-MM-DDTHH:MM"}), 400
-    try:
-        table_number = int(data.get('table_number'))
-    except (ValueError, TypeError):
-        return jsonify({"error": "Invalid table number"}), 400
-    if not is_table_available_fixed(restaurant.id, table_number, booking_date):
-        return jsonify({"error": "Table not available at the requested time"}), 409
+        return json_response(error="Invalid date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM", status=400)
+    layout_id = data.get('layout_id')
+    if not layout_id:
+        return json_response(error="Invalid layout ID", status=400)
+    if not is_table_available(restaurant.id, layout_id, booking_date):
+        return json_response(error="Table not available at the requested time", status=409)
     num_guests = data.get('num_guests', 1)
     special_requests = data.get('special_requests')
     new_booking = Booking(
         user_id=data.get('user_id'),
         restaurant_id=data.get('restaurant_id'),
         date=booking_date,
-        table_number=table_number,
+        layout_id=layout_id,
         num_guests=num_guests,
         special_requests=special_requests,
     )
@@ -61,45 +66,52 @@ def book_table():
     Dear {user.name},
     Your booking at {restaurant.name} is confirmed!
     Date: {booking_date.strftime("%Y-%m-%d %H:%M")}
-    Table Number: {table_number}
+    Table Number: {layout_id}
     Number of Guests: {num_guests}
     """
     mail.send(msg)
-    return jsonify({"message": "Booking successful, email sent!"}), 201
+    return json_response(data={"message": "Booking successful, email sent!"}, status=201)
 
 @booking_bp.route('/<int:booking_id>', methods=['PUT'])
 @login_required
+@csrf.exempt
 def update_booking(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     if booking.user_id != current_user.id:
-        return jsonify({"error": "Unauthorized"}), 403
+        return json_response(error="Unauthorized", status=403)
     data = request.json
     if 'date' in data:
         try:
-            booking.date = datetime.strptime(data.get('date'), "%Y-%m-%dT%H:%M")
+            date_str = data.get('date')
+            if 'T' in date_str:
+                booking_date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M")
+            else:
+                booking_date = datetime.strptime(date_str, "%Y-%m-%d")
+            booking.date = booking_date
         except (ValueError, TypeError):
-            return jsonify({"error": "Invalid date format. Use YYYY-MM-DDTHH:MM"}), 400
-    if 'table_number' in data:
+            return json_response(error="Invalid date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM", status=400)
+    if 'layout_id' in data:
         try:
-            booking.table_number = int(data.get('table_number'))
+            booking.layout_id = int(data.get('layout_id'))
         except (ValueError, TypeError):
-            return jsonify({"error": "Invalid table number"}), 400
+            return json_response(error="Invalid layout ID", status=400)
     if 'num_guests' in data:
         booking.num_guests = data.get('num_guests')
     if 'special_requests' in data:
         booking.special_requests = data.get('special_requests')
     db.session.commit()
-    return jsonify({"message": "Booking updated successfully"}), 200
+    return json_response(data={"message": "Booking updated successfully"}, status=200)
 
 @booking_bp.route('/<int:booking_id>', methods=['DELETE'])
 @login_required
+@csrf.exempt
 def cancel_booking(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     if booking.user_id != current_user.id and not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
+        return json_response(error="Unauthorized", status=403)
     db.session.delete(booking)
     db.session.commit()
-    return jsonify({"message": "Booking canceled successfully"}), 200
+    return json_response(data={"message": "Booking canceled successfully"}, status=200)
 
 @booking_bp.route('/user', methods=['GET'])
 @login_required
@@ -108,18 +120,52 @@ def get_user_bookings():
     booking_list = [{
         "id": booking.id,
         "restaurant_id": booking.restaurant_id,
-        "restaurant_name": booking.restaurant.name if booking.restaurant else "Unknown",
-        "date": booking.date.strftime("%Y-%m-%d %H:%M"),
-        "table_number": booking.table_number
+        "layout_id": booking.layout_id,  # Changed from table_number
+        "date": booking.date.strftime("%Y-%m-%d %H:%M")
     } for booking in bookings]
-    return jsonify(booking_list), 200
+    return json_response(data=booking_list, status=200)
 
 @booking_bp.route('/analytics', methods=['GET'])
 @login_required
 def bookings_analytics():
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
+        return json_response(error="Admin privileges required", status=403)
     analytics = db.session.query(func.date(Booking.date), func.count(Booking.id)) \
                   .group_by(func.date(Booking.date)).all()
     result = [{"date": str(date), "bookings": count} for date, count in analytics]
-    return jsonify(result), 200
+    return json_response(data=result, status=200)
+
+@booking_bp.route('/availability', methods=['GET'])
+def get_available_tables():
+    restaurant_id = request.args.get('restaurant_id')
+    date_str = request.args.get('date')
+    
+    try:
+        if 'T' in date_str:
+            booking_date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M")
+        else:
+            booking_date = datetime.strptime(date_str, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return json_response(error="Invalid date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM", status=400)
+    
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not restaurant:
+        return json_response(error="Restaurant not found", status=404)
+    
+    duration = restaurant.booking_duration
+    start = booking_date
+    end = booking_date + timedelta(minutes=duration)
+    
+    available_tables = Layout.query.filter(
+        Layout.restaurant_id == restaurant_id,
+        ~db.session.query(Booking.id).filter(
+            (Booking.layout_id == Layout.id) &
+            (Booking.restaurant_id == restaurant_id) &
+            (Booking.date < end) &
+            (Booking.date + timedelta(minutes=duration) > start)
+        ).exists()
+    ).all()
+    
+    layout_ids = [table.id for table in available_tables]
+    
+    return json_response(data={"available_tables": layout_ids}, status=200)

@@ -1,0 +1,160 @@
+/* signup.css */
+
+/* Main container for the Registration page */
+.signup-container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  padding-top: 60px; /* Ensure content is not overshadowed by navbar */
+}
+
+/* Left side gradient panel */
+.signup-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(90deg, #1E90FF 0%, #00BFFF 100%);
+  padding: 48px;
+  color: #FFFFFF;
+}
+
+/* "Welcome!" heading (Heading 3) */
+.welcome-text {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
+  font-size: 28px;
+  margin-bottom: 40px;
+}
+
+/* Where you put brand or logoo.png if needed */
+.brand-logo {
+  width: 380px;
+  height: 325px;
+  background: url(../../public/logo.png) no-repeat center/cover;
+  border-radius: 6px;
+  margin: 0 auto;
+}
+
+/* "Not a member yet?" text and link near bottom or top as you prefer */
+.not-member-section {
+  margin-top: auto;
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+}
+
+.not-member-text {
+  color: #FFFFFF;
+}
+
+.register-now-link {
+  margin-left: 6px;
+  color: #F8F9FA;
+  text-decoration: underline;
+}
+
+/* Right side: white background for your form */
+.signup-right-panel {
+  flex: 1;
+  background: #FAFAFA;
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Align content to the top */
+}
+
+/* Container that wraps the form */
+.signup-content {
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+/* "Registration" heading (Heading 2) */
+.registration-header {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #212529;
+}
+
+/* "Enter your details to register" (Heading 3) */
+.registration-subtitle {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  color: #6C757D;
+  margin-bottom: 24px;
+}
+
+/* The sign up form container */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Each field group (Name, Email, Password) */
+.form-group-signup {
+  position: relative;
+}
+
+/* The label above your field */
+.signup-label {
+  display: block;
+  margin-bottom: 5px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  color: #212529;
+  font-weight: 400;
+}
+
+/* The text input itself */
+.signup-input {
+  width: 100%;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 1px solid #DEE2E6;
+  border-radius: 6px;
+  font-size: 16px;
+  color: rgba(33, 37, 41, 0.75);
+}
+
+.signup-input:focus {
+  outline: none;
+  border-color: #0D6EFD;
+}
+
+/* Error message for each field */
+.signup-error {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #d00;
+}
+
+/* The sign up button */
+.signup-button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  background: #0D6EFD;
+  color: #FFFFFF;
+  font-size: 21px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.signup-button:hover {
+  background: #095aba;
+}
+
+/* Error alert from server */
+.alert-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 6px;
+}

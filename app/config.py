@@ -17,3 +17,10 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
+
+    # Session Configuration
+    SESSION_COOKIE_SECURE = False  # For development
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cross-origin cookies
+    SESSION_COOKIE_NAME = "restaurant_session"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_REFRESH_EACH_REQUEST = True

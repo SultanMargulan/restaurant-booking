@@ -8,6 +8,7 @@ function RestaurantLayoutPage() {
   const { restaurantId } = useParams();
   const [restaurant, setRestaurant] = useState(null);
   const [layout, setLayout] = useState([]);
+  const [availability, setAvailability] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -16,12 +17,28 @@ function RestaurantLayoutPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const resDetails = await axiosClient.get(`/restaurants/${restaurantId}`);
-        setRestaurant(resDetails.data);
+        const restaurantRes = await axiosClient.get(`/restaurants/${restaurantId}`);
+        setRestaurant(restaurantRes.data.data);
+
         const resLayout = await axiosClient.get(`/restaurants/${restaurantId}/layout`);
-        setLayout(resLayout.data);
+        setLayout(resLayout.data.data || []); // Handle nested data
+
+        const today = new Date();
+        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T12:00`; // Add default time
+        
+        const resAvailability = await axiosClient.get('/bookings/availability', {
+          params: { 
+            restaurant_id: restaurantId, 
+            date: formattedDate // Now includes time
+          }
+        });
+        setAvailability((resAvailability.data.available_tables || []).reduce((acc, tableId) => {
+          acc[tableId] = true;
+          return acc;
+        }, {}));        
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to load data.');
+        console.error('Layout load error:', err);
+        setError('Failed to load layout data');
       } finally {
         setLoading(false);
       }
@@ -63,6 +80,7 @@ function RestaurantLayoutPage() {
       >
         {layout.map((item) => {
           if (item.type === 'table' || !item.type) {
+            const isAvailable = availability[item.id];
             return (
               <div
                 key={`table-${item.id}`}
@@ -83,6 +101,10 @@ function RestaurantLayoutPage() {
                 }}
               >
                 {item.table_number}
+                <div className="table-status-indicator">
+                  <div className="led" style={{backgroundColor: isAvailable ? '#4CAF50' : '#F44336'}} />
+                  <span>{isAvailable ? 'Available' : 'Booked'}</span>
+                </div>
               </div>
             );
           } else if (item.type === 'furniture') {

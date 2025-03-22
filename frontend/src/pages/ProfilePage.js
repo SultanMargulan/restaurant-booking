@@ -34,23 +34,9 @@ function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      setLoading(true);
       const res = await axiosClient.get('/auth/profile');
-      const data = res.data;
-      // e.g. shape:
-      // {
-      //   id: 5,
-      //   name: "TestUser",
-      //   email: "test@exam.com",
-      //   is_admin: false,
-      //   loyalty_points: 15,
-      //   loyalty_tier: "Silver",
-      //   preferences: {
-      //      preferred_cuisine: "Italian",
-      //      dietary_restrictions: "No peanuts",
-      //      ambiance_preference: "quiet"
-      //   }
-      // }
+      const data = res.data.data; // Access data.data instead of res.data
+      // Update state with data...
       setName(data.name || '');
       setEmail(data.email || '');
       setIsAdmin(data.is_admin || false);
@@ -110,72 +96,82 @@ function ProfilePage() {
   if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
 
   return (
-    <div className="container mt-4">
-      <h2>My Profile</h2>
-      {message && <div className="alert alert-success">{message}</div>}
+    <div className="profile-container">
+      <div className="profile-content">
+        <div className="profile-header">
+          <h2>My Profile</h2>
+          {message && <div className="alert alert-success">{message}</div>}
+          {error && <div className="alert alert-danger">{error}</div>}
+        </div>
 
-      {/* Basic Info */}
-      <form onSubmit={handleUpdateBasic}>
-        <div className="mb-2">
-          <label>Name</label>
-          <input
-            type="text"
-            className="form-control"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
+        <div className="profile-section">
+          <h4>Basic Information</h4>
+          <form onSubmit={handleUpdateBasic}>
+            <div className="form-group">
+              <label>Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                className="form-control"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="loyalty-info">
+              <div className="loyalty-item">
+                <p>Loyalty Points: {loyaltyPoints}</p>
+                <p>Loyalty Tier: {loyaltyTier}</p>
+                <p>Admin: {isAdmin ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            <button className="btn btn-primary">Update Basic Info</button>
+          </form>
         </div>
-        <div className="mb-2">
-          <label>Email</label>
-          <input
-            type="email"
-            className="form-control"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-          />
-        </div>
-        <p>Loyalty Points: {loyaltyPoints}</p>
-        <p>Loyalty Tier: {loyaltyTier}</p>
-        <p>Admin: {isAdmin ? 'Yes' : 'No'}</p>
-        <button className="btn btn-primary">Update Basic Info</button>
-      </form>
 
-      <hr />
-
-      {/* Preferences */}
-      <h4>Preferences</h4>
-      <form onSubmit={handleUpdatePreferences}>
-        <div className="mb-2">
-          <label>Preferred Cuisine</label>
-          <input
-            type="text"
-            className="form-control"
-            value={preferredCuisine}
-            onChange={e => setPreferredCuisine(e.target.value)}
-          />
+        <div className="profile-section">
+          <h4>Preferences</h4>
+          <form onSubmit={handleUpdatePreferences}>
+            <div className="form-group">
+              <label>Preferred Cuisine</label>
+              <input
+                type="text"
+                className="form-control"
+                value={preferredCuisine}
+                onChange={e => setPreferredCuisine(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Dietary Restrictions</label>
+              <input
+                type="text"
+                className="form-control"
+                value={dietaryRestrictions}
+                onChange={e => setDietaryRestrictions(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Ambiance Preference</label>
+              <input
+                type="text"
+                className="form-control"
+                value={ambiancePreference}
+                onChange={e => setAmbiancePreference(e.target.value)}
+              />
+            </div>
+            <button className="btn btn-secondary" type="submit">
+              Update Preferences
+            </button>
+          </form>
         </div>
-        <div className="mb-2">
-          <label>Dietary Restrictions</label>
-          <input
-            type="text"
-            className="form-control"
-            value={dietaryRestrictions}
-            onChange={e => setDietaryRestrictions(e.target.value)}
-          />
-        </div>
-        <div className="mb-2">
-          <label>Ambiance Preference</label>
-          <input
-            type="text"
-            className="form-control"
-            value={ambiancePreference}
-            onChange={e => setAmbiancePreference(e.target.value)}
-          />
-        </div>
-        <button className="btn btn-secondary" type="submit">
-          Update Preferences
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

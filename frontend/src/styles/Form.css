@@ -1,53 +1,66 @@
 /* Form.css */
+.auth-page {
+  max-width: 500px;
+  margin: 5rem auto;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* If you want to keep .form-container for your form element, ensure it's inside .auth-page */
 .form-container {
-  max-width: 400px;
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-  margin: 50px auto;
+  padding: 1rem; /* Minimal padding since .auth-page already has padding */
 }
 
-.form-container h2 {
-  text-align: center;
-  margin-bottom: 20px;
+.floating-input {
+  position: relative;
+  margin-bottom: 1.5rem;
 }
 
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  font-weight: bold;
-  display: block;
-}
-
-.form-group input {
+.floating-input input {
   width: 100%;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.floating-input label {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.floating-input input:focus ~ label,
+.floating-input input:not(:placeholder-shown) ~ label {
+  top: -10px;
+  left: 0.8rem;
+  font-size: 0.8rem;
+  background: white;
+  padding: 0 0.2rem;
 }
 
 .btn-primary {
+  display: inline-block;
   width: 100%;
-  background-color: #007bff;
-  color: rgb(35, 37, 37) !important;
-  font-size: 16px;
-  padding: 10px;
-  border-radius: 5px;
+  padding: 1rem;
+  background: #2d3436; /* or var(--primary-color) */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
   cursor: pointer;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3 !important;
-}
-
-.alert.error {
-  background: #f8d7da;
-  color: #721c24;
-  padding: 10px;
-  border-radius: 5px;
   text-align: center;
-  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  background: #3d4547;
 }

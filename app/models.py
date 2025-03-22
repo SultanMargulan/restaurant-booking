@@ -40,6 +40,7 @@ class Restaurant(db.Model):
     images = db.relationship('RestaurantImage', backref='restaurant', lazy=True, cascade="all, delete-orphan")
 
     capacity = db.Column(db.Integer, default=50)  
+    booking_duration = db.Column(db.Integer, default=120)  # minutes
     average_price = db.Column(db.Float, nullable=True)
 
 class RestaurantImage(db.Model):
@@ -56,6 +57,14 @@ class Layout(db.Model):
     shape = db.Column(db.String(50), default="rectangle")  # or 'circle', etc.
     capacity = db.Column(db.Integer, default=4)
 
+class LayoutVersion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    layout_data = db.Column(db.JSON)  # Stores tables' positions
+    description = db.Column(db.String(200))  # "Admin edit 2024-03-15" or "Auto-generated"
+    is_suggestion = db.Column(db.Boolean, default=False)
+
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -70,7 +79,7 @@ class Booking(db.Model):
     special_requests = db.Column(db.String(300), nullable=True)
 
     date = db.Column(db.DateTime, nullable=False)
-    table_number = db.Column(db.Integer, nullable=False)
+    layout_id = db.Column(db.Integer, db.ForeignKey('layout.id'), nullable=False)
 
     # relationships
     restaurant = db.relationship('Restaurant', backref='bookings', lazy=True)

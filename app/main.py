@@ -15,7 +15,10 @@ def create_app(config_class=Config):
     csrf.init_app(app)
 
     # Enable CORS for all routes. You can also restrict it if needed.
-    CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
+    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, 
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE"])
     
     # Initialize extensions
     db.init_app(app)

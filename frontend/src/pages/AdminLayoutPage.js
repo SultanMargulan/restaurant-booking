@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axiosClient from '../services/axiosClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { FiEdit } from 'react-icons/fi'; // Removed FiPlus import
 import "../styles/AdminLayoutPage.css";
 
 function AdminLayoutPage() {
@@ -25,7 +26,7 @@ function AdminLayoutPage() {
     try {
       setLoading(true);
       const res = await axiosClient.get('/restaurants');
-      setRestaurants(res.data);
+      setRestaurants(res.data.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch restaurants.');
     } finally {
@@ -37,26 +38,37 @@ function AdminLayoutPage() {
   if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
 
   return (
-    <div className="container mt-4">
-      <h2>Admin - Manage Layouts</h2>
-      <p>Select a restaurant below to edit or suggest a new layout.</p>
+    <div className="admin-layout-page">
+      <div className="header-section">
+        <h2>Manage Restaurant Layouts</h2>
+        <div className="search-filter">
+          <input type="text" placeholder="Search restaurants..." />
+        </div>
+      </div>
 
-      {restaurants.length === 0 && <p>No restaurants found.</p>}
-
-      <div className="list-group">
+      <div className="layout-grid">
         {restaurants.map((rest) => (
-          <div key={rest.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <strong>{rest.name}</strong>
-              <br />
-              <small>{rest.location} - {rest.cuisine}</small>
+          <div key={rest.id} className="restaurant-card">
+            <div className="card-content">
+              <h3>{rest.name}</h3>
+              <div className="card-meta">
+                <span className="location">{rest.location}</span>
+                <span className="cuisine">{rest.cuisine}</span>
+              </div>
+              <div className="card-actions">
+                <Link
+                  to={`/admin/layout/${rest.id}`}
+                  className="btn-primary"
+                >
+                  <FiEdit /> Edit Layout
+                </Link>
+              </div>
             </div>
-            <Link 
-              to={`/admin/layout/${rest.id}`} 
-              className="btn btn-sm btn-primary"
-            >
-              Edit Layout
-            </Link>
+            {rest.images?.[0] && (
+              <div className="card-image">
+                <img src={rest.images[0]} alt={rest.name} />
+              </div>
+            )}
           </div>
         ))}
       </div>

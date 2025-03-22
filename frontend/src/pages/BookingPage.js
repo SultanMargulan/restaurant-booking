@@ -8,23 +8,28 @@ import "../styles/BookingPage.css";
 function BookingPage() {
   const { user } = useAuth();
   const location = useLocation();
-  // Check if the restaurantId was passed in navigation state
   const preselectedRestaurantId = location.state?.restaurantId || '';
 
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(preselectedRestaurantId);
-  const [date, setDate] = useState('2025-03-10T19:00');
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    now.setMinutes(0);
+    now.setSeconds(0);
+    return now.toISOString().slice(0, 16);
+  });
   const [tableNumber, setTableNumber] = useState('');
   const [numGuests, setNumGuests] = useState(1);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [availableTables, setAvailableTables] = useState([]);
+  const [layoutData, setLayoutData] = useState([]);
 
-  // Fetch restaurants on mount
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        const response = await axiosClient.get('/restaurants');
-        setRestaurants(response.data);
+        const res = await axiosClient.get('/restaurants');
+        setRestaurants(res.data.data);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to fetch restaurants.');
       }
@@ -32,12 +37,35 @@ function BookingPage() {
     fetchRestaurants();
   }, []);
 
-  // Update selectedRestaurantId if navigation state changes
   useEffect(() => {
-    if (location.state?.restaurantId) {
-      setSelectedRestaurantId(location.state.restaurantId);
-    }
-  }, [location.state]);
+    const fetchAvailability = async () => {
+      if (!selectedRestaurantId || !date) return;
+      try {
+        const res = await axiosClient.get('/bookings/availability', {
+          params: { restaurant_id: selectedRestaurantId, date }
+        });
+        setAvailableTables(res.data.available_tables || []);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to fetch availability.');
+      }
+    };
+    fetchAvailability();
+  }, [selectedRestaurantId, date]);  
+
+  useEffect(() => {
+    const fetchLayout = async () => {
+      if (!selectedRestaurantId) return;
+      try {
+        const res = await axiosClient.get(`/restaurants/${selectedRestaurantId}/layout`);
+        setLayoutData(res.data.data || []); // Ensure it's always an array
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to fetch layout.');
+      }
+    };
+    fetchLayout();
+  }, [selectedRestaurantId]);
+  
+  
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -45,55 +73,49 @@ function BookingPage() {
     setError('');
 
     if (!user?.id) {
-      setError('No user ID found; please log in again.');
+      setError('No user ID found. Please log in again.');
       return;
     }
 
     try {
-      const response = await axiosClient.post('/bookings', {
-        user_id: user.id, // backend requires user_id
+      const res = await axiosClient.post('/bookings', {
+        user_id: user.id,
         restaurant_id: selectedRestaurantId,
         date,
-        table_number: tableNumber,
+        layout_id: tableNumber,
         num_guests: numGuests,
         special_requests: 'No peanuts, please.'
       });
-      setMessage(response.data.message);
+      setMessage(res.data.message);
     } catch (err) {
       setError(err.response?.data?.error || 'Booking failed.');
     }
   };
 
   return (
-    <div className="container mt-4">
-      <h1>Make a Booking</h1>
+    <div className="booking-page-wrapper">
+      <div className="booking-container">
+        <h2>Reserve Your Table</h2>
 
-      {restaurants.length === 0 && !error && <p>Loading restaurants...</p>}
-      {error && <div className="alert alert-danger">{error}</div>}
-      {message && <div className="alert alert-success">{message}</div>}
+        {error && <div className="alert alert-danger">{error}</div>}
+        {message && <div className="alert alert-success">{message}</div>}
 
-      {preselectedRestaurantId && (
-        <div className="alert alert-info">
-          You are booking for:{" "}
-          {
-            restaurants.find((r) => r.id === preselectedRestaurantId)?.name ||
-            "Selected Restaurant"
-          }
-        </div>
-      )}
+        {preselectedRestaurantId && (
+          <div className="alert alert-info">
+            Booking for: <strong>{restaurants.find(r => r.id === preselectedRestaurantId)?.name}</strong>
+          </div>
+        )}
 
-      {restaurants.length > 0 && (
         <form onSubmit={handleBooking}>
-          <div className="mb-3">
-            <label>Select Restaurant</label>
+          <div className="form-group">
+            <label>Restaurant</label>
             <select
-              className="form-control"
               value={selectedRestaurantId}
               onChange={(e) => setSelectedRestaurantId(e.target.value)}
+              disabled={!!preselectedRestaurantId}
               required
-              disabled={!!preselectedRestaurantId}  // disable if preselected, optional
             >
-              <option value="">--Select a Restaurant--</option>
+              <option value="">-- Select a Restaurant --</option>
               {restaurants.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} - {r.location}
@@ -102,44 +124,71 @@ function BookingPage() {
             </select>
           </div>
 
-          <div className="mb-3">
-            <label>Date and Time</label>
+          <div className="form-group">
+            <label>Date & Time</label>
             <input
               type="datetime-local"
-              className="form-control"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
             />
           </div>
 
-          <div className="mb-3">
-            <label>Table Number</label>
-            <input
-              type="number"
-              className="form-control"
+          <div className="form-group">
+            <label>Available Tables</label>
+            <select
               value={tableNumber}
               onChange={(e) => setTableNumber(e.target.value)}
+              required
+              disabled={!availableTables.length}
+            >
+              <option value="">-- Select Table --</option>
+              {availableTables.map((t) => (
+                <option key={t} value={t}>Table {t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Number of Guests</label>
+            <input
+              type="number"
+              value={numGuests}
+              onChange={(e) => setNumGuests(e.target.value)}
+              min={1}
               required
             />
           </div>
 
-          <div className="mb-3">
-            <label>Number of Guests</label>
-            <input
-              type="number"
-              className="form-control"
-              value={numGuests}
-              onChange={(e) => setNumGuests(e.target.value)}
-              min="1"
-            />
-          </div>
-
-          <button className="btn btn-primary" type="submit">
-            Book
+          <button type="submit" className="btn-primary">
+            Confirm Booking
           </button>
         </form>
+      </div>
+
+      {layoutData.length > 0 && (
+        <div className="layout-preview">
+          {layoutData.map((item) => (
+            <div
+              key={item.id}
+              className={`booking-table ${Number(tableNumber) === item.id ? 'selected' : ''}`}
+              style={{
+                left: `${item.x_coordinate}%`,
+                top: `${item.y_coordinate}%`
+              }}
+              onClick={() => {
+                if (availableTables.includes(item.id)) {
+                  setTableNumber(item.id);
+                }
+              }}
+            >
+              <div className="table-number">{item.table_number}</div>
+              <div className="capacity">👥 {item.capacity}</div>
+            </div>
+          ))}
+        </div>
       )}
+
     </div>
   );
 }

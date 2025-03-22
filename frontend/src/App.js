@@ -15,37 +15,44 @@ import AdminRestaurantPage from './pages/AdminRestaurantPage';
 import AdminLayoutPage from './pages/AdminLayoutPage';
 import RestaurantDetailsPage from './pages/RestaurantsDetailsPage';
 import ProfilePage from './pages/ProfilePage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/restaurants" element={<RestaurantListPage />} />
-        <Route path="/book" element={
-          <ProtectedRoute>
-            <BookingPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/otp" element={<OTPPage />} />
-        
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        } />
+    <ErrorBoundary>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/restaurants" element={<RestaurantListPage />} />
+          <Route path="/book" element={
+            <ProtectedRoute>
+              <BookingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/otp" element={<OTPPage />} />
+          
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
 
-        <Route path="/restaurants/details/:restaurantId" element={<RestaurantDetailsPage />} />
-        <Route path="/restaurants/:restaurantId/layout" element={<RestaurantLayoutPage />} />
-        <Route path="/admin/layout/:restaurantId" element={<ProtectedRoute><AdminLayoutEditPage /></ProtectedRoute>} />
-        <Route path="admin/restaurants" element={<ProtectedRoute><AdminRestaurantPage /></ProtectedRoute>} />
-        <Route path="/admin/layout" element={<ProtectedRoute adminOnly={true}><AdminLayoutPage /></ProtectedRoute>}/>
-        <Route path="/admin/layout/:restaurantId" element={<ProtectedRoute adminOnly={true}><AdminLayoutEditPage /></ProtectedRoute>}/>
-      </Routes>
-    </Router>
+          <Route path="/restaurants/details/:restaurantId" element={<RestaurantDetailsPage />} />
+          <Route path="/restaurants/:restaurantId/layout" element={<RestaurantLayoutPage />} />
+          <Route path="/admin/layout/:restaurantId" element={<ProtectedRoute><AdminLayoutEditPage /></ProtectedRoute>} />
+          <Route path="/admin/restaurants" element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminRestaurantPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/layout" element={<ProtectedRoute adminOnly={true}><AdminLayoutPage /></ProtectedRoute>}/>
+          <Route path="/admin/layout/:restaurantId" element={<ProtectedRoute adminOnly={true}><AdminLayoutEditPage /></ProtectedRoute>}/>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

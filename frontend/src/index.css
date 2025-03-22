@@ -1,9 +1,11 @@
 /* index.css - Global Enhancements */
 :root {
-  --primary-color: #4CAF50;
-  --secondary-color: #FF9800;
-  --background-color: #f5f7fa;
-  --text-color: #333;
+  --primary-color: #0d6efd;
+  --secondary-color: #0b5ed7;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --background-color: #f8f9fa;
+  --text-color: #212529;
   --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   --glass-bg: rgba(255, 255, 255, 0.15);
   --glass-border: rgba(255, 255, 255, 0.2);

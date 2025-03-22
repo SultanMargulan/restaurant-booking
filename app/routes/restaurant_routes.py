@@ -1,12 +1,13 @@
 # restaurant_routes.py
 from flask import Blueprint, request, jsonify
 from app.extensions import db, mail
-from app.models import Restaurant, RestaurantImage, Layout, Review
+from app.models import Restaurant, RestaurantImage, Layout, Review, LayoutVersion
 from flask_login import login_required, current_user
 from flask_mail import Message
 import random
 import math
 from app.extensions import csrf
+from app.utils.response import json_response
 
 restaurant_bp = Blueprint('restaurant', __name__, url_prefix='/api/restaurants')
 
@@ -18,30 +19,47 @@ def get_restaurants():
         "name": r.name,
         "location": r.location,
         "cuisine": r.cuisine,
-        "image_url": r.images[0].image_url if r.images else "https://via.placeholder.com/100"
+        "image_url": r.images[0].image_url if r.images else "/static/placeholder.png"
     } for r in restaurants]
-    return jsonify(restaurants_list), 200
+    return json_response(data=restaurants_list, status=200)
 
 @restaurant_bp.route('', methods=['POST'])
 @login_required
+@csrf.exempt
 def add_restaurant():
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
+        return json_response(error="Admin privileges required", status=403)
+    
     data = request.json
     name = data.get('name')
     location = data.get('location')
     cuisine = data.get('cuisine')
-    new_restaurant = Restaurant(name=name, location=location, cuisine=cuisine)
-    db.session.add(new_restaurant)
-    db.session.commit()
-    image_urls = data.get('image_urls', [])
-    for url in image_urls:
-        url = url.strip()
-        if url:
-            restaurant_image = RestaurantImage(restaurant_id=new_restaurant.id, image_url=url)
-            db.session.add(restaurant_image)
-    db.session.commit()
-    return jsonify({"message": "Restaurant added successfully", "restaurant_id": new_restaurant.id}), 201
+    
+    # Basic validation
+    if not name or len(name.strip()) < 2:
+        return json_response(error="Restaurant name must be at least 2 characters", status=400)
+    if not location or not cuisine:
+        return json_response(error="Location and cuisine are required", status=400)
+    
+    try:
+        db.session.begin_nested()  # Start transaction
+        new_restaurant = Restaurant(name=name, location=location, cuisine=cuisine)
+        db.session.add(new_restaurant)
+        db.session.flush()  # Assign ID before adding images
+        
+        image_urls = data.get('image_urls', [])
+        for url in image_urls:
+            url = url.strip()
+            if url:
+                restaurant_image = RestaurantImage(restaurant_id=new_restaurant.id, image_url=url)
+                db.session.add(restaurant_image)
+        
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return json_response(error="Failed to create restaurant", status=500)
+    
+    return json_response(data={"message": "Restaurant added successfully", "restaurant_id": new_restaurant.id}, status=201)
 
 @restaurant_bp.route('/<int:restaurant_id>', methods=['GET'])
 def restaurant_details(restaurant_id):
@@ -55,13 +73,14 @@ def restaurant_details(restaurant_id):
         "capacity": restaurant.capacity,
         "average_price": restaurant.average_price
     }
-    return jsonify(data), 200
+    return json_response(data=data, status=200)
 
+@csrf.exempt
 @restaurant_bp.route('/<int:restaurant_id>', methods=['PUT'])
 @login_required
 def edit_restaurant(restaurant_id):
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
+        return json_response(error="Admin privileges required", status=403)
     restaurant = Restaurant.query.get_or_404(restaurant_id)
     data = request.json
     restaurant.name = data.get('name', restaurant.name)
@@ -76,17 +95,18 @@ def edit_restaurant(restaurant_id):
             new_image = RestaurantImage(restaurant_id=restaurant.id, image_url=url)
             db.session.add(new_image)
     db.session.commit()
-    return jsonify({"message": "Restaurant updated successfully"}), 200
+    return json_response(data={"message": "Restaurant updated successfully"}, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>', methods=['DELETE'])
 @login_required
+@csrf.exempt
 def delete_restaurant(restaurant_id):
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
+        return json_response(error="Admin privileges required", status=403)
     restaurant = Restaurant.query.get_or_404(restaurant_id)
     db.session.delete(restaurant)
     db.session.commit()
-    return jsonify({"message": "Restaurant deleted successfully"}), 200
+    return json_response(data={"message": "Restaurant deleted successfully"}, status=200)
 
 @restaurant_bp.route('/recommendations', methods=['GET'])
 @login_required
@@ -103,14 +123,14 @@ def restaurant_recommendations():
     if not user_pref:
         # If user has no preferences, just return all or random.
         # Return them unfiltered for simplicity
-        return jsonify([
+        return json_response(data=[
             {
                 "id": r.id,
                 "name": r.name,
                 "location": r.location,
                 "cuisine": r.cuisine
             } for r in restaurants
-        ]), 200
+        ], status=200)
 
     # Extract user prefs
     pref_cuisine = user_pref.preferred_cuisine.lower() if user_pref.preferred_cuisine else None
@@ -165,7 +185,7 @@ def restaurant_recommendations():
             # "score": scr, # optionally return the score
         })
 
-    return jsonify(result), 200
+    return json_response(data=result, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>/layout', methods=['GET'])
 def get_restaurant_layout(restaurant_id):
@@ -265,45 +285,58 @@ def get_restaurant_layout(restaurant_id):
         }
     ]
 
-    return jsonify(layout_data + furniture), 200
+    return json_response(data=layout_data + furniture, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>/layout', methods=['PUT'])
 @login_required
+@csrf.exempt
 def update_layout(restaurant_id):
-    # Only admins can update the layout.
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
+        return json_response(error="Admin privileges required", status=403)
 
     data = request.json
     new_layout = data.get('layout')
     if not new_layout:
-        return jsonify({"error": "No layout data provided"}), 400
+        return json_response(error="No layout data provided", status=400)
 
-    # Loop through provided table objects and update existing records.
+    # Validate coordinates for each table
+    for table_data in new_layout:
+        x = table_data.get('x_coordinate')
+        y = table_data.get('y_coordinate')
+        if not (20 <= x <= 80) or not (20 <= y <= 80):
+            return json_response(
+                error=f"Table {table_data.get('id')}: Coordinates must be between 20% and 80%",
+                status=400
+            )
+
+    # Update existing tables
     for table_data in new_layout:
         table = Layout.query.get(table_data.get('id'))
         if table and table.restaurant_id == restaurant_id:
             table.x_coordinate = float(table_data.get('x_coordinate', table.x_coordinate))
             table.y_coordinate = float(table_data.get('y_coordinate', table.y_coordinate))
             table.capacity = int(table_data.get('capacity', table.capacity))
-            # Optionally update table_number or shape if needed
+
+    new_version = LayoutVersion(
+        restaurant_id=restaurant_id,
+        layout_data=new_layout
+    )
+    db.session.add(new_version)
     db.session.commit()
-    return jsonify({"message": "Layout updated successfully"}), 200
+
+    return json_response(data={"message": "Layout updated successfully"}, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>/suggest-layout', methods=['POST'])
 @login_required
 @csrf.exempt
 def suggest_layout(restaurant_id):
     if not current_user.is_admin:
-        return jsonify({"error": "Admin privileges required"}), 403
-    import math, random
-
+        return json_response(error="Admin privileges required", status=403)
+    
     # Remove existing layout for a fresh start
     Layout.query.filter_by(restaurant_id=restaurant_id).delete()
     db.session.commit()
 
-    # [Generate new layout here as in your previous logic...]
-    # For example, using a ring layout with random parameters (see previous snippet)
     total_tables = random.randint(8, 12)
     container_width = 800
     container_height = 600
@@ -313,24 +346,47 @@ def suggest_layout(restaurant_id):
     radius = random.randint(10, 30)
     offset_angle = random.random() * math.pi
 
+    MIN_DISTANCE = 5.0  # Minimum distance between tables (in percentage)
+
+    generated_tables = []
     for i in range(total_tables):
-        angle = 2 * math.pi * i / total_tables + offset_angle
-        x_px = center_x + radius * math.cos(angle)
-        y_px = center_y + radius * math.sin(angle)
-        x_percent = (x_px / container_width) * 100
-        y_percent = (y_px / container_height) * 100
-        # Clamp values into safe zone [20,80]
-        x_percent = max(20, min(80, x_percent))
-        y_percent = max(20, min(80, y_percent))
-        new_table = Layout(
-            restaurant_id=restaurant_id,
-            table_number=i + 1,
-            x_coordinate=x_percent,
-            y_coordinate=y_percent,
-            shape='circle' if random.random() < 0.5 else 'rectangle',
-            capacity=random.randint(2, 8)
-        )
-        db.session.add(new_table)
+        collision = True
+        attempts = 0
+        while collision and attempts < 100:
+            # Generate candidate position
+            angle = 2 * math.pi * i / total_tables + offset_angle
+            x_px = center_x + radius * math.cos(angle)
+            y_px = center_y + radius * math.sin(angle)
+            x_percent = (x_px / container_width) * 100
+            y_percent = (y_px / container_height) * 100
+            x_percent = max(20, min(80, x_percent))
+            y_percent = max(20, min(80, y_percent))
+
+            # Check for collisions
+            collision = False
+            for existing in generated_tables:
+                dx = existing['x'] - x_percent
+                dy = existing['y'] - y_percent
+                distance = math.sqrt(dx**2 + dy**2)
+                if distance < MIN_DISTANCE:
+                    collision = True
+                    radius += 1  # Adjust radius to avoid collision
+                    break
+
+            attempts += 1
+
+        if not collision:
+            generated_tables.append({'x': x_percent, 'y': y_percent})
+            # Create and save new table
+            new_table = Layout(
+                restaurant_id=restaurant_id,
+                table_number=i + 1,
+                x_coordinate=x_percent,
+                y_coordinate=y_percent,
+                shape='circle' if random.random() < 0.5 else 'rectangle',
+                capacity=random.randint(2, 8)
+            )
+            db.session.add(new_table)
     db.session.commit()
 
     tables = Layout.query.filter_by(restaurant_id=restaurant_id).all()
@@ -367,11 +423,15 @@ def suggest_layout(restaurant_id):
             "type": "furniture"
         }
     ]
-    return jsonify(layout_data + furniture), 200
+    return json_response(data=layout_data + furniture, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>/reviews', methods=['GET'])
 def list_reviews(restaurant_id):
-    reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.date_created.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
+    reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.date_created.desc()).paginate(page=page, per_page=per_page)
+
     reviews_list = [{
         "id": r.id,
         "user_id": r.user_id,
@@ -379,8 +439,12 @@ def list_reviews(restaurant_id):
         "rating": r.rating,
         "comment": r.comment,
         "date_created": r.date_created
-    } for r in reviews]
-    return jsonify(reviews_list), 200
+    } for r in reviews.items]
+
+    return json_response(data={
+        "reviews": reviews_list,
+        "total_pages": reviews.pages
+    }, status=200)
 
 @csrf.exempt
 @restaurant_bp.route('/<int:restaurant_id>/reviews', methods=['POST'])
@@ -391,10 +455,10 @@ def add_review(restaurant_id):
     comment = data.get('comment')
 
     if not rating or not comment:
-        return jsonify({"error": "Rating and comment are required"}), 400
+        return json_response(error="Rating and comment are required", status=400)
 
     if not (1 <= rating <= 5):
-        return jsonify({"error": "Rating must be 1-5"}), 400
+        return json_response(error="Rating must be 1-5", status=400)
     
     new_review = Review(
         user_id=current_user.id,
@@ -405,26 +469,4 @@ def add_review(restaurant_id):
     db.session.add(new_review)
     db.session.commit()
 
-    return jsonify({"message": "Review added successfully", "review_id": new_review.id}), 201
-
-# import requests
-# from flask import request, jsonify
-
-# @restaurant_bp.route('/ai/recommendations', methods=['GET'])
-# @login_required
-# def ai_recommendations():
-#     # Example: Using user preferences to generate recommendations
-#     pref = current_user.preferences[0] if current_user.preferences else None
-#     prompt = "Suggest restaurants in {} serving {} cuisine.".format(
-#         current_user.location if hasattr(current_user, 'location') else "my area",
-#         pref.preferred_cuisine if pref else "any"
-#     )
-#     # Make a call to the GPT API (using a placeholder URL and headers)
-#     response = requests.post(
-#         "https://api.openai.com/v1/engines/davinci-codex/completions",
-#         headers={"Authorization": "Bearer YOUR_API_KEY"},
-#         json={"prompt": prompt, "max_tokens": 50}
-#     )
-#     data = response.json()
-#     recommendation = data.get("choices", [{}])[0].get("text", "").strip()
-#     return jsonify({"recommendation": recommendation}), 200
+    return json_response(data={"message": "Review added successfully", "review_id": new_review.id}, status=201)
