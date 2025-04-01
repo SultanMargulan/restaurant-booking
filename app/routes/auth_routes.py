@@ -4,11 +4,12 @@ from app.extensions import db, mail
 from app.models import User, UserPreference, Review, Restaurant, Booking
 from datetime import datetime, timedelta
 import random
-from flask_login import login_user, current_user, login_required, logout_user
+from flask_login import login_user, current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Message
 from app.extensions import csrf
 from app.utils.response import json_response
+from app.utils.auth import api_login_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -88,7 +89,7 @@ def register():
     return json_response(data={"message": "Registration successful. Please log in."}, status=201)
 
 @auth_bp.route('/profile', methods=['GET'])
-@login_required
+@api_login_required
 def profile():
     if current_user.preferences:
         pref = current_user.preferences[0]
@@ -110,7 +111,7 @@ def profile():
     }, status=200)
 
 @auth_bp.route('/profile/edit', methods=['POST'])
-@login_required
+@api_login_required
 @csrf.exempt
 def edit_profile():
     data = request.json
@@ -141,7 +142,7 @@ def edit_profile():
         return json_response(error=f"Database error: {str(e)}", status=500)
 
 @auth_bp.route('/preferences', methods=['POST'])
-@login_required
+@api_login_required
 @csrf.exempt
 def update_preferences():
     data = request.json
@@ -162,7 +163,7 @@ def update_preferences():
         return json_response(error=f"Database error: {str(e)}", status=500)
 
 @auth_bp.route('/logout', methods=['POST'])
-@login_required
+@api_login_required
 def logout():
     logout_user()
     return json_response(data={"message": "Logged out successfully."}, status=200)

@@ -1,114 +1,113 @@
-/* Add to CardComponent.css */
-.restaurant-card {
+.card {
   background: white;
   border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   transition: transform 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: relative;
 }
 
-.restaurant-card:hover {
+.card:hover {
   transform: translateY(-5px);
 }
 
-.card-image {
-  height: 240px;
-  background-color: #f8f9fa;
+.card-image-wrapper {
   position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 ratio */
   overflow: hidden;
 }
 
-.card-image img {
+.card-image-wrapper img {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
 }
 
-.card-image:hover img {
+.card-image-wrapper:hover img {
   transform: scale(1.05);
 }
 
-.card-badge {
+.rating-badge {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(255, 193, 7, 0.9);
-  padding: 0.3rem 0.7rem;
+  top: 10px;
+  left: 10px;
+  background: #ffc107;
+  color: #fff;
+  padding: 4px 10px;
   border-radius: 20px;
-  color: white;
   font-weight: bold;
-  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .like-button {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: 10px;
+  right: 10px;
   background: none;
   border: none;
+  font-size: 1.3rem;
   cursor: pointer;
-  font-size: 1.5rem;
-  color: #dc3545;
-  transition: transform 0.3s ease;
 }
 
-.like-button:hover {
-  transform: scale(1.2);
+.card-body {
+  padding: 1rem;
 }
 
-.card-content {
-  padding: 1.5rem;
+.card-body h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
 }
 
-.card-content h3 {
-  margin: 0 0 0.5rem;
-  color: #2d3436;
-  font-size: 1.25rem;
-}
-
-.cuisine-tag {
-  color: #6c757d;
+.cuisine {
+  color: #777;
   font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #555;
   margin-bottom: 1rem;
 }
 
-.card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.meta-item {
+.meta div {
+  margin-bottom: 0.3rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #6c757d;
-  font-size: 0.9rem;
+  gap: 6px;
 }
 
-.card-actions {
+.card-buttons {
   display: flex;
   gap: 0.5rem;
-  margin-top: 1rem;
+  flex-wrap: wrap;
 }
 
-.btn-primary, .btn-secondary {
-  padding: 0.5rem 1rem;
+.btn {
   border: none;
+  padding: 0.5rem 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  font-weight: 600;
+  transition: background 0.2s;
 }
 
 .btn-primary {
-  background: #0d6efd;
+  background: #007bff;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #0b5ed7;
+  background: #0056b3;
 }
 
 .btn-secondary {
@@ -118,4 +117,41 @@
 
 .btn-secondary:hover {
   background: #5a6268;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.card-actions .btn {
+  flex: 1 1 48%; /* Ensures buttons are evenly spaced and responsive */
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.card-actions .btn-primary {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.card-actions .btn-primary:hover {
+  background-color: #0b5ed7;
+}
+
+.card-actions .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.card-actions .btn-secondary:hover {
+  background-color: #5a6268;
 }

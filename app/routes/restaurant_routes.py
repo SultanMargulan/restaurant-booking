@@ -1,7 +1,7 @@
 # restaurant_routes.py
 from flask import Blueprint, request, jsonify
 from app.extensions import db, mail
-from app.models import Restaurant, RestaurantImage, Layout, Review, LayoutVersion
+from app.models import Restaurant, MenuItem, RestaurantImage, Layout, Review, LayoutVersion
 from flask_login import login_required, current_user
 from flask_mail import Message
 import random
@@ -19,6 +19,11 @@ def get_restaurants():
         "name": r.name,
         "location": r.location,
         "cuisine": r.cuisine,
+        "promo": r.promo,
+        "lat": r.lat,
+        "lon": r.lon,
+        "opening_time": r.opening_time.strftime("%H:%M") if r.opening_time else None,
+        "closing_time": r.closing_time.strftime("%H:%M") if r.closing_time else None,
         "image_url": r.images[0].image_url if r.images else "/static/placeholder.png"
     } for r in restaurants]
     return json_response(data=restaurants_list, status=200)
@@ -29,36 +34,45 @@ def get_restaurants():
 def add_restaurant():
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
-    
+
     data = request.json
     name = data.get('name')
     location = data.get('location')
     cuisine = data.get('cuisine')
-    
+
     # Basic validation
     if not name or len(name.strip()) < 2:
         return json_response(error="Restaurant name must be at least 2 characters", status=400)
     if not location or not cuisine:
         return json_response(error="Location and cuisine are required", status=400)
-    
+
     try:
         db.session.begin_nested()  # Start transaction
-        new_restaurant = Restaurant(name=name, location=location, cuisine=cuisine)
+        new_restaurant = Restaurant(
+            name=name,
+            location=location,
+            cuisine=cuisine,
+            promo=data.get('promo'),  # Add promo field
+            lat=data.get('lat'),
+            lon=data.get('lon'),
+            opening_time=data.get('opening_time'),
+            closing_time=data.get('closing_time')
+        )
         db.session.add(new_restaurant)
         db.session.flush()  # Assign ID before adding images
-        
+
         image_urls = data.get('image_urls', [])
         for url in image_urls:
             url = url.strip()
             if url:
                 restaurant_image = RestaurantImage(restaurant_id=new_restaurant.id, image_url=url)
                 db.session.add(restaurant_image)
-        
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return json_response(error="Failed to create restaurant", status=500)
-    
+
     return json_response(data={"message": "Restaurant added successfully", "restaurant_id": new_restaurant.id}, status=201)
 
 @restaurant_bp.route('/<int:restaurant_id>', methods=['GET'])
@@ -69,15 +83,21 @@ def restaurant_details(restaurant_id):
         "name": restaurant.name,
         "location": restaurant.location,
         "cuisine": restaurant.cuisine,
+        "promo": restaurant.promo,
+        "lat": restaurant.lat,
+        "lon": restaurant.lon,
+        "opening_time": restaurant.opening_time.strftime("%H:%M") if restaurant.opening_time else None,
+        "closing_time": restaurant.closing_time.strftime("%H:%M") if restaurant.closing_time else None,
         "images": [img.image_url for img in restaurant.images],
         "capacity": restaurant.capacity,
-        "average_price": restaurant.average_price
+        "average_price": restaurant.average_price,
+        "features": restaurant.features
     }
     return json_response(data=data, status=200)
 
-@csrf.exempt
 @restaurant_bp.route('/<int:restaurant_id>', methods=['PUT'])
 @login_required
+@csrf.exempt
 def edit_restaurant(restaurant_id):
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
@@ -86,6 +106,12 @@ def edit_restaurant(restaurant_id):
     restaurant.name = data.get('name', restaurant.name)
     restaurant.location = data.get('location', restaurant.location)
     restaurant.cuisine = data.get('cuisine', restaurant.cuisine)
+    restaurant.promo = data.get('promo', restaurant.promo)
+    restaurant.lat = data.get('lat', restaurant.lat)
+    restaurant.lon = data.get('lon', restaurant.lon)
+    restaurant.opening_time = data.get('opening_time', restaurant.opening_time)
+    restaurant.closing_time = data.get('closing_time', restaurant.closing_time)
+
     # Remove existing images and add new ones
     RestaurantImage.query.filter_by(restaurant_id=restaurant.id).delete()
     image_urls = data.get('image_urls', [])
@@ -94,6 +120,7 @@ def edit_restaurant(restaurant_id):
         if url:
             new_image = RestaurantImage(restaurant_id=restaurant.id, image_url=url)
             db.session.add(new_image)
+
     db.session.commit()
     return json_response(data={"message": "Restaurant updated successfully"}, status=200)
 
@@ -104,9 +131,55 @@ def delete_restaurant(restaurant_id):
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
     restaurant = Restaurant.query.get_or_404(restaurant_id)
+    # Delete related layouts first
+    Layout.query.filter_by(restaurant_id=restaurant.id).delete()
     db.session.delete(restaurant)
     db.session.commit()
     return json_response(data={"message": "Restaurant deleted successfully"}, status=200)
+
+@restaurant_bp.route('/search', methods=['GET'])
+def search_restaurants():
+    search_query = request.args.get('q', '')
+    cuisine_filter = request.args.get('cuisine', '')
+    min_rating = request.args.get('min_rating', 0, type=float)
+
+    query = Restaurant.query
+
+    if search_query:
+        query = query.filter(
+            (Restaurant.name.ilike(f'%{search_query}%')) | 
+            (Restaurant.location.ilike(f'%{search_query}%'))
+        )
+
+    if cuisine_filter:
+        query = query.filter_by(cuisine=cuisine_filter)
+
+    if min_rating > 0:
+        query = query.filter(Restaurant.rating >= min_rating)
+
+    results = query.all()
+
+    return json_response(data=[{
+        "id": r.id,
+        "name": r.name,
+        "cuisine": r.cuisine,
+        "rating": r.rating,  # Now using the computed property
+        "lat": r.lat,
+        "lon": r.lon,
+        "features": r.features,
+        "promo": r.promo,
+        "image_url": r.images[0].image_url if r.images else ''
+    } for r in results], status=200)
+
+@restaurant_bp.route('/<int:restaurant_id>/menu', methods=['GET'])
+def get_menu(restaurant_id):
+    menu_items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
+    return json_response(data=[{
+        "category": item.category,
+        "name": item.name,
+        "description": item.description,
+        "price": item.price
+    } for item in menu_items], status=200)
 
 @restaurant_bp.route('/recommendations', methods=['GET'])
 @login_required
@@ -470,3 +543,9 @@ def add_review(restaurant_id):
     db.session.commit()
 
     return json_response(data={"message": "Review added successfully", "review_id": new_review.id}, status=201)
+
+@restaurant_bp.route('/count', methods=['GET'])
+def get_restaurant_count():
+    count = Restaurant.query.count()
+    return json_response(data={"count": count}, status=200)
+

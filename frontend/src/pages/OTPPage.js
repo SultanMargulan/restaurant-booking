@@ -1,26 +1,36 @@
 // OTPPage.js
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axiosClient from "../services/axiosClient";
-import { useAuth } from "../contexts/AuthContext"; // Add this import
-import "../styles/OTPPage.css"; 
-import "../styles/Form.css"; // so we can reuse the same container
+import { useAuth } from "../contexts/AuthContext";
+import "../styles/OTPPage.css";
+import "../styles/Form.css";
 
 function OTPPage() {
-  const [otpCode, setOtpCode] = useState("");
-  const [error, setError] = useState("");
+  const [otpCode, setOtpCode] = useState(""); // State for the 6-digit OTP
+  const [error, setError] = useState("");     // Error message state
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth(); // Destructure login from context
+  const { login } = useAuth();
+  const inputRefs = useRef([]);               // Refs for each input box
 
+  // Initialize refs and focus the first input on mount
+  useEffect(() => {
+    if (inputRefs.current[0]) {
+      inputRefs.current[0].focus();
+    } else {
+      console.warn('First OTP input ref is not available');
+    }
+  }, []);
+
+  // Handle OTP verification
   const handleVerifyOtp = async () => {
     try {
       const response = await axiosClient.post("/auth/verify-otp", {
         otp_code: otpCode,
-        temp_user_id: location.state?.tempUserId // Pass from navigation state
+        temp_user_id: location.state?.tempUserId,
       });
-      
-      if (response.data.data.user) { // Access data.data.user
+      if (response.data.data.user) {
         login(response.data.data.user);
         navigate("/");
       }
@@ -37,13 +47,42 @@ function OTPPage() {
         {[...Array(6)].map((_, i) => (
           <input
             key={i}
-            type="text"
-            maxLength="1"
+            type="tel"                          // Use "tel" for numeric keypad on mobile
+            maxLength="1"                       // Limit input to one digit
             className="digit-box"
-            value={otpCode[i] || ''}
-            onChange={(e) =>
-              setOtpCode((prev) => prev.slice(0, i) + e.target.value + prev.slice(i + 1))
-            }
+            value={otpCode[i] || ""}           // Display the digit or empty string
+            ref={(el) => (inputRefs.current[i] = el)} // Assign ref for focus control
+            onChange={(e) => {
+              const value = e.target.value;
+              // Only allow digits
+              if (/^\d*$/.test(value)) {
+                if (value.length === 1) {
+                  // Single digit typed: update state and focus next
+                  setOtpCode((prev) =>
+                    prev.slice(0, i) + value + prev.slice(i + 1)
+                  );
+                  if (i < 5) {
+                    inputRefs.current[i + 1]?.focus();
+                  }
+                } else if (value.length === 6) {
+                  // Full OTP pasted: set entire code and focus last input
+                  setOtpCode(value);
+                  inputRefs.current[5]?.focus();
+                } else if (value.length === 0) {
+                  // Digit cleared: update state
+                  setOtpCode((prev) =>
+                    prev.slice(0, i) + "" + prev.slice(i + 1)
+                  );
+                }
+              }
+            }}
+            onKeyDown={(e) => {
+              // Move to previous input on backspace if current input is empty
+              if (e.key === "Backspace" && !otpCode[i] && i > 0) {
+                inputRefs.current[i - 1]?.focus();
+              }
+            }}
+            onFocus={(e) => e.target.select()} // Select text on focus
           />
         ))}
       </div>

@@ -43,10 +43,35 @@ class Restaurant(db.Model):
     booking_duration = db.Column(db.Integer, default=120)  # minutes
     average_price = db.Column(db.Float, nullable=True)
 
+    lat = db.Column(db.Float)  # Latitude
+    lon = db.Column(db.Float)  # Longitude
+    features = db.Column(db.JSON)  # Store features as JSON array
+    opening_time = db.Column(db.Time)
+    closing_time = db.Column(db.Time)
+
+    promo = db.Column(db.String(200), nullable=True)
+
+    layouts = db.relationship('Layout', backref='restaurant', cascade="all, delete-orphan", lazy=True)
+
+    @property
+    def rating(self):
+        if not self.reviews:
+            return 4.0  # Default rating
+        total = sum(review.rating for review in self.reviews)
+        return round(total / len(self.reviews), 1)
+
 class RestaurantImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
     image_url = db.Column(db.String(300), nullable=False)
+
+class MenuItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'))
+    category = db.Column(db.String(50))
+    name = db.Column(db.String(100))
+    description = db.Column(db.String(300))
+    price = db.Column(db.Float)
 
 class Layout(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -169,3 +169,14 @@ def get_available_tables():
     layout_ids = [table.id for table in available_tables]
     
     return json_response(data={"available_tables": layout_ids}, status=200)
+
+@booking_bp.route('/count/this-week', methods=['GET'])
+def get_bookings_this_week():
+    today = datetime.utcnow()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday of this week
+    end_of_week = start_of_week + timedelta(days=7)  # End of week
+    count = Booking.query.filter(
+        Booking.date >= start_of_week,
+        Booking.date < end_of_week
+    ).count()
+    return json_response(data={"count": count}, status=200)

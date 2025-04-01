@@ -1,14 +1,13 @@
 /* index.css - Global Enhancements */
 :root {
-  --primary-color: #0d6efd;
-  --secondary-color: #0b5ed7;
-  --success-color: #28a745;
-  --danger-color: #dc3545;
-  --background-color: #f8f9fa;
-  --text-color: #212529;
-  --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  --glass-bg: rgba(255, 255, 255, 0.15);
-  --glass-border: rgba(255, 255, 255, 0.2);
+  --primary-color: #2563eb;  /* More modern blue */
+  --secondary-color: #1d4ed8;
+  --text-color: #1e293b;
+  --background-color: #ffffff;
+  --surface-color: #f8fafc;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
 }
 
 body {
@@ -58,4 +57,9 @@ button:hover {
 
 .card:hover {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }

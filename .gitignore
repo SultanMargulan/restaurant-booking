@@ -19,3 +19,9 @@ env/
 
 # some tests
 tests/
+
+app/backend.txt
+app/seed_menus.py
+app/seed.py
+
+frontend/main_front.txt

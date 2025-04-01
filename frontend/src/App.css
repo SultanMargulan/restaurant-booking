@@ -16,7 +16,7 @@ body {
   padding: 1rem;
   border-radius: 8px;
   margin: 1rem 0;
-  z-index: 1000 !important;
+  z-index: 5000 !important;
   position: relative;
 }
 

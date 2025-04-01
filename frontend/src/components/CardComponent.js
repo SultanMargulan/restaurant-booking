@@ -1,27 +1,20 @@
+// CardComponent.js
 import React, { useState } from 'react';
 import { FiStar, FiMapPin, FiClock, FiHeart } from 'react-icons/fi';
 import '../styles/CardComponent.css';
 
-const CardComponent = ({ 
-  restaurant, 
-  onViewDetails, 
-  onBookNow,
-  onViewLayout,
-  user
-}) => {
+const CardComponent = ({ restaurant, onViewDetails, onBookNow, onViewLayout, user }) => {
   const [isLiked, setIsLiked] = useState(false);
 
   return (
-    <div className="restaurant-card">
-      <div className="card-image">
+    <div className="card">
+      <div className="card-image-wrapper">
         <img 
           src={restaurant.image_url || restaurant.images?.[0] || '/default-restaurant.jpeg'} 
-          alt={restaurant.name}
-          onError={(e) => {
-            e.target.src = '/default-restaurant.jpeg';
-          }}
+          alt={restaurant.name} 
+          onError={(e) => { e.target.src = '/default-restaurant.jpeg'; }}
         />
-        <div className="card-badge">
+        <div className="rating-badge">
           <FiStar /> {restaurant.rating || '4.5'}
         </div>
         {user && (
@@ -37,31 +30,20 @@ const CardComponent = ({
           </button>
         )}
       </div>
-      
-      <div className="card-content">
+
+      <div className="card-body">
         <h3>{restaurant.name}</h3>
-        
-        <div className="card-meta">
-          <span className="cuisine-tag">{restaurant.cuisine}</span>
-          <div className="meta-item">
-            <FiMapPin /> {restaurant.location}
-          </div>
-          <div className="meta-item">
-            <FiClock /> Open until {restaurant.closing_time || '10:00 PM'}
-          </div>
+        <p className="cuisine">{restaurant.cuisine}</p>
+        <div className="meta">
+          <div><FiMapPin /> {restaurant.location}</div>
+          <div><FiClock /> Open until {restaurant.closing_time || '22:00'}</div>
         </div>
 
         <div className="card-actions">
-          <button className="btn-primary" onClick={onViewDetails}>
-            View Details
-          </button>
-          <button className="btn-secondary" onClick={onBookNow}>
-            Book Now
-          </button>
+          <button className="btn btn-primary" onClick={onViewDetails}>View Details</button>
+          <button className="btn btn-secondary" onClick={onBookNow}>Book Now</button>
           {onViewLayout && (
-            <button className="btn-secondary" onClick={onViewLayout}>
-              View Layout
-            </button>
+            <button className="btn btn-secondary" onClick={onViewLayout}>View Layout</button>
           )}
         </div>
       </div>

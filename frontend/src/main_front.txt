@@ -1,0 +1,578 @@
+// src/App.js
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import RestaurantListPage from './pages/RestaurantListPage';
+import BookingPage from './pages/BookingPage';
+import OTPPage from './pages/OTPPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/Navbar';
+import RestaurantLayoutPage from './pages/RestaurantLayoutPage';
+import AdminLayoutEditPage from './pages/AdminLayoutEditPage';
+import AdminRestaurantPage from './pages/AdminRestaurantPage';
+import AdminLayoutPage from './pages/AdminLayoutPage';
+import RestaurantDetailsPage from './pages/RestaurantsDetailsPage';
+import ProfilePage from './pages/ProfilePage';
+import ErrorBoundary from './components/ErrorBoundary';
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/restaurants" element={<RestaurantListPage />} />
+        <Route
+          path="/book"
+          element={
+            <ProtectedRoute>
+              <BookingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/otp" element={<OTPPage />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/restaurants/details/:restaurantId" element={<RestaurantDetailsPage />} />
+        <Route path="/restaurants/:restaurantId/layout" element={<RestaurantLayoutPage />} />
+        <Route
+          path="/admin/layout/:restaurantId"
+          element={
+            <ProtectedRoute>
+              <AdminLayoutEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/restaurants"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminRestaurantPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/layout"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminLayoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/layout/:restaurantId"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminLayoutEditPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
+
+// src/index.js
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter as Router } from 'react-router-dom'; // Import Router here
+import App from './App';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { AuthProvider } from './contexts/AuthContext';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import "bootstrap/dist/css/bootstrap.min.css";
+
+const queryClient = new QueryClient();
+
+const container = document.getElementById('root');
+const root = ReactDOM.createRoot(container);
+root.render(
+  <QueryClientProvider client={queryClient}>
+    <Router>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </Router>
+  </QueryClientProvider>
+);
+
+// src/services/axiosClient.js
+import axios from 'axios';
+
+const axiosClient = axios.create({
+  baseURL: "http://localhost:5000/api",
+  withCredentials: true
+});
+
+// Handle session expiration globally
+axiosClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      // Clear local storage and reload to trigger auth flow
+      localStorage.removeItem('user');
+      window.location.reload();
+    }
+    return Promise.reject(error.response?.data?.error || 'Request failed');
+  }
+);
+
+export default axiosClient;
+
+src/contexts/AuthContext.js:
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axiosClient from '../services/axiosClient';
+
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axiosClient.get('/api/auth/profile');
+        if (response.data?.data) {
+          setUser(response.data.data);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        if (error.response?.status === 401) {
+          setUser(null);
+          // Only redirect to login if not already there
+          if (window.location.pathname !== '/login') {
+            navigate('/login');
+          }
+        } else {
+          console.error('Authentication check failed:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [navigate]); // Dependency on navigate only, not user or other changing states
+
+  const login = async (email, password) => {
+    // Implement login logic here
+  };
+
+  const logout = async () => {
+    await axiosClient.post('/api/auth/logout');
+    setUser(null);
+    navigate('/login');
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);
+
+// src/components/ProtectedRoute.js
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import LoadingSpinner from './LoadingSpinner';
+import '../styles/ProtectedRoute.css';
+
+function ProtectedRoute({ children, adminOnly = false }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" />;
+  if (adminOnly && !user.is_admin) return <Navigate to="/" />;
+
+  return children;
+}
+
+export default ProtectedRoute;
+
+src/components/ErrorBoundary.js:
+import React from 'react';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="alert alert-danger">
+          Something went wrong. Please try refreshing the page.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+
+src/components/CardComponent.js:
+// CardComponent.js
+import React, { useState } from 'react';
+import { FiStar, FiMapPin, FiClock, FiHeart } from 'react-icons/fi';
+import '../styles/CardComponent.css';
+
+const CardComponent = ({ restaurant, onViewDetails, onBookNow, onViewLayout, user }) => {
+  const [isLiked, setIsLiked] = useState(false);
+
+  return (
+    <div className="card">
+      <div className="card-image-wrapper">
+        <img 
+          src={restaurant.image_url || restaurant.images?.[0] || '/default-restaurant.jpeg'} 
+          alt={restaurant.name} 
+          onError={(e) => { e.target.src = '/default-restaurant.jpeg'; }}
+        />
+        <div className="rating-badge">
+          <FiStar /> {restaurant.rating || '4.5'}
+        </div>
+        {user && (
+          <button 
+            className="like-button"
+            onClick={() => setIsLiked(!isLiked)}
+            aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <FiHeart style={{ 
+              fill: isLiked ? '#dc3545' : 'transparent',
+              stroke: isLiked ? '#dc3545' : 'currentColor'
+            }} />
+          </button>
+        )}
+      </div>
+
+      <div className="card-body">
+        <h3>{restaurant.name}</h3>
+        <p className="cuisine">{restaurant.cuisine}</p>
+        <div className="meta">
+          <div><FiMapPin /> {restaurant.location}</div>
+          <div><FiClock /> Open until {restaurant.closing_time || '22:00'}</div>
+        </div>
+
+        <div className="card-actions">
+          <button className="btn btn-primary" onClick={onViewDetails}>View Details</button>
+          <button className="btn btn-secondary" onClick={onBookNow}>Book Now</button>
+          {onViewLayout && (
+            <button className="btn btn-secondary" onClick={onViewLayout}>View Layout</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CardComponent;
+
+App.css:
+
+/* Global styles */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f8f9fa;
+  color: #2d3436;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  z-index: 5000 !important;
+  position: relative;
+}
+
+.alert-danger {
+  background: #ffe3e3;
+  color: #c92a2a;
+}
+
+.alert-success {
+  background: #d3f9d8;
+  color: #2b8a3e;
+}
+
+body, html {
+  margin: 0; 
+  padding: 0;
+  /* other resets if you prefer */
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  height: 80px;
+}
+
+/* Add padding to pages */
+.homepage-container,
+.restaurant-list-container,
+.restaurant-details-page,
+.restaurant-layout-page {
+  padding-top: 80px; /* Match navbar height */
+}
+
+index.css:
+/* index.css - Global Enhancements */
+:root {
+  --primary-color: #2563eb;  /* More modern blue */
+  --secondary-color: #1d4ed8;
+  --text-color: #1e293b;
+  --background-color: #ffffff;
+  --surface-color: #f8fafc;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: all 0.3s ease-in-out;
+}
+
+/* Smooth Animations */
+* {
+  transition: all 0.3s ease-in-out;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-weight: 600;
+  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+/* Glassmorphism UI */
+.glass-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Modern Cards */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 20px;
+  margin: 20px 0;
+  transition: 0.3s;
+}
+
+.card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+src/styles/CardComponent.css:
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 ratio */
+  overflow: hidden;
+}
+
+.card-image-wrapper img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.card-image-wrapper:hover img {
+  transform: scale(1.05);
+}
+
+.rating-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #ffc107;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.like-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-body h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.cuisine {
+  color: #777;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+.meta div {
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.card-actions .btn {
+  flex: 1 1 48%; /* Ensures buttons are evenly spaced and responsive */
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.card-actions .btn-primary {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.card-actions .btn-primary:hover {
+  background-color: #0b5ed7;
+}
+
+.card-actions .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.card-actions .btn-secondary:hover {
+  background-color: #5a6268;
+}
