@@ -42,9 +42,6 @@ const CardComponent = ({ restaurant, onViewDetails, onBookNow, onViewLayout, use
         <div className="card-actions">
           <button className="btn btn-primary" onClick={onViewDetails}>View Details</button>
           <button className="btn btn-secondary" onClick={onBookNow}>Book Now</button>
-          {onViewLayout && (
-            <button className="btn btn-secondary" onClick={onViewLayout}>View Layout</button>
-          )}
         </div>
       </div>
     </div>

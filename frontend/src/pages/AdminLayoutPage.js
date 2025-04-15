@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axiosClient from '../services/axiosClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiEdit } from 'react-icons/fi'; // Removed FiPlus import
+import { FiEdit, FiMapPin, FiTag } from 'react-icons/fi';
 import "../styles/AdminLayoutPage.css";
 
 function AdminLayoutPage() {
@@ -11,16 +11,15 @@ function AdminLayoutPage() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!user || !user.is_admin) {
-      // If not admin, redirect
       navigate('/');
       return;
     }
     fetchRestaurants();
-    // eslint-disable-next-line
-  }, [user]);
+  }, [user, navigate]);
 
   const fetchRestaurants = async () => {
     try {
@@ -28,47 +27,54 @@ function AdminLayoutPage() {
       const res = await axiosClient.get('/restaurants');
       setRestaurants(res.data.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to fetch restaurants.');
+      setError(err?.response?.data?.error || 'Failed to fetch restaurants.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div className="container mt-4">Loading...</div>;
-  if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
+  const filteredRestaurants = restaurants.filter(r =>
+    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.location.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div className="alert alert-danger">{error}</div>;
 
   return (
     <div className="admin-layout-page">
       <div className="header-section">
         <h2>Manage Restaurant Layouts</h2>
         <div className="search-filter">
-          <input type="text" placeholder="Search restaurants..." />
+          <input
+            type="text"
+            placeholder="Search restaurants..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
 
-      <div className="layout-grid">
-        {restaurants.map((rest) => (
-          <div key={rest.id} className="restaurant-card">
+      <div className="admin-layout-grid">
+        {filteredRestaurants.map(rest => (
+          <div key={rest.id} className="admin-restaurant-card">
+            {rest.image_url && (
+              <div className="card-image">
+                <img src={rest.image_url} alt={rest.name} />
+              </div>
+            )}
             <div className="card-content">
               <h3>{rest.name}</h3>
               <div className="card-meta">
-                <span className="location">{rest.location}</span>
-                <span className="cuisine">{rest.cuisine}</span>
+                <span className="location"><FiMapPin /> {rest.location}</span>
+                <span className="cuisine"><FiTag /> {rest.cuisine}</span>
               </div>
               <div className="card-actions">
-                <Link
-                  to={`/admin/layout/${rest.id}`}
-                  className="btn-primary"
-                >
+                <Link to={`/admin/layout/${rest.id}`} className="btn-primary">
                   <FiEdit /> Edit Layout
                 </Link>
               </div>
             </div>
-            {rest.images?.[0] && (
-              <div className="card-image">
-                <img src={rest.images[0]} alt={rest.name} />
-              </div>
-            )}
           </div>
         ))}
       </div>

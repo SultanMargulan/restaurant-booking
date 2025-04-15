@@ -1,3 +1,4 @@
+from sqlalchemy import JSON
 from app.extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -72,15 +73,24 @@ class MenuItem(db.Model):
     name = db.Column(db.String(100))
     description = db.Column(db.String(300))
     price = db.Column(db.Float)
+    image_url = db.Column(db.String(255), nullable=True)
 
 class Layout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
-    table_number = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String(50), nullable=False, default='table')  # 'table' or 'furniture'
+    # Table fields
+    table_number = db.Column(db.Integer, nullable=True)
+    table_type = db.Column(db.String(50), nullable=True)  # New column
     x_coordinate = db.Column(db.Float, nullable=False)
     y_coordinate = db.Column(db.Float, nullable=False)
-    shape = db.Column(db.String(50), default="rectangle")  # or 'circle', etc.
+    shape = db.Column(db.String(50), default="rectangle")
     capacity = db.Column(db.Integer, default=4)
+    # Furniture fields
+    name = db.Column(db.String(100), nullable=True)
+    width = db.Column(db.Float, nullable=True)
+    height = db.Column(db.Float, nullable=True)
+    color = db.Column(db.String(50), nullable=True)
 
 class LayoutVersion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -108,6 +118,7 @@ class Booking(db.Model):
 
     # relationships
     restaurant = db.relationship('Restaurant', backref='bookings', lazy=True)
+    menu_orders = db.Column(JSON, nullable=True)  # list of {item_id, quantity}
 
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -116,3 +127,13 @@ class Review(db.Model):
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.String(500))
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default='PENDING')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # This relationship connects a payment to its booking
+    booking = db.relationship('Booking', backref='payment', lazy=True)

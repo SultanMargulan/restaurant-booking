@@ -10,38 +10,57 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const storedUser = localStorage.getItem('user');
+  
+    if (storedUser) {
       try {
-        const response = await axiosClient.get('/api/auth/profile');
-        if (response.data?.data) {
-          setUser(response.data.data);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        if (error.response?.status === 401) {
-          setUser(null);
-          // Only redirect to login if not already there
-          if (window.location.pathname !== '/login') {
-            navigate('/login');
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+  
+        const fetchUser = async () => {
+          try {
+            const response = await axiosClient.get('/auth/profile');
+            if (response.data?.data) {
+              setUser(response.data.data);
+              localStorage.setItem('user', JSON.stringify(response.data.data));
+            }
+          } catch (error) {
+            if (error.response?.status === 401) {
+              setUser(null);
+              localStorage.removeItem('user');
+              if (window.location.pathname !== '/login') {
+                navigate('/login');
+              }
+            } else {
+              console.error('Authentication check failed:', error);
+            }
+          } finally {
+            setLoading(false);
           }
-        } else {
-          console.error('Authentication check failed:', error);
-        }
-      } finally {
-        setLoading(false);
+        };
+  
+        fetchUser(); // <- call it here inside the block
+  
+      } catch (e) {
+        localStorage.removeItem('user');
+        setLoading(false); // fallback if JSON.parse fails
       }
-    };
+  
+    } else {
+      // No user stored — just set loading to false
+      setLoading(false);
+    }
+  }, [navigate]);
+  
 
-    fetchUser();
-  }, [navigate]); // Dependency on navigate only, not user or other changing states
-
-  const login = async (email, password) => {
-    // Implement login logic here
+  const login = async (userData) => {
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const logout = async () => {
-    await axiosClient.post('/api/auth/logout');
+    await axiosClient.post('/auth/logout');
+    localStorage.removeItem('user');
     setUser(null);
     navigate('/login');
   };

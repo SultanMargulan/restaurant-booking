@@ -1,11 +1,11 @@
 /* AdminLayoutEditPage.css */
 .layout-editor-container {
   max-width: 1200px;
-  margin: 2rem auto;
+  margin: 5rem auto;
   padding: 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .header-section {
@@ -33,15 +33,13 @@
 
 .layout-grid {
   position: relative;
-  width: 100%;
+  width: 800px;
   height: 600px;
-  border: 2px solid #e2e8f0;
+  margin: 2rem auto;
+  background: #f8f9fa;
   border-radius: 12px;
-  background: 
-    linear-gradient(to right, #f8fafc 1px, transparent 1px),
-    linear-gradient(to bottom, #f8fafc 1px, transparent 1px);
-  background-size: 40px 40px;
-  margin: 2rem 0;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .draggable-table {
@@ -77,12 +75,47 @@
 }
 
 .controls-section {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.item-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1rem;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: #f8fafc;
+  align-items: end;
+}
+
+.item-controls select,
+.item-controls input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
+  background: white;
+  font-size: 0.9rem;
+}
+
+.item-controls button {
+  grid-column: span 2;
+  padding: 0.75rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.item-controls button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 
 .table-controls {
@@ -129,17 +162,16 @@
 }
 
 .btn-primary {
-  background: var(--primary-color);
-  color: white;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 2rem;
+  background: #10b981;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s ease;
+  font-weight: 600;
+  height: fit-content;
 }
 
 .btn-primary:hover {
-  background: var(--secondary-color);
+  background: #059669;
 }
 
 .alert {
@@ -156,4 +188,161 @@
 .alert.error {
   background: #f8d7da;
   color: #721c24;
+}
+
+.draggable-item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.draggable-item.collision-warning {
+  animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-warning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+.draggable-item.table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.draggable-item.table.standard {
+  background: #3b82f6;
+  border: 2px solid #1d4ed8;
+}
+
+.draggable-item.table.vip {
+  background: #f59e0b;
+  border: 2px solid #d97706;
+}
+
+.draggable-item.table.booth {
+  background: #10b981;
+  border: 2px solid #059669;
+}
+
+/* Enhanced Furniture Styles */
+.draggable-item.furniture {
+  background: #4a5568;
+  border: 2px solid #2d3748;
+  border-radius: 6px;
+  padding: 8px;
+  color: white;
+  opacity: 0.9;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.draggable-item.furniture:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.furniture-label {
+  font-size: 0.75rem;
+  text-align: center;
+  word-break: break-word;
+  max-width: 100%;
+  padding: 4px;
+  display: block;
+}
+
+.furniture-name-input {
+  background: transparent;
+  border: none;
+  color: white;
+  text-align: center;
+  width: 90%;
+  font-size: 0.75rem;
+  padding: 2px;
+}
+
+.furniture-name-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.furniture.bar {
+  background: #2b6cb0;
+  border-color: #2c5282;
+}
+
+.furniture.entrance {
+  background: #718096;
+  border-color: #4a5568;
+}
+
+.furniture.counter {
+  background: #c53030;
+  border-color: #9b2c2c;
+}
+
+.table-number {
+  font-size: 1.1rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.table-type-icon {
+  font-size: 0.8em;
+}
+
+.furniture-label {
+  color: white;
+  font-size: 0.8em;
+  text-align: center;
+  padding: 5px;
+}
+
+.delete-item {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.draggable-item:hover .delete-item {
+  opacity: 1;
 }

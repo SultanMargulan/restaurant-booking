@@ -1,6 +1,7 @@
 # restaurant_routes.py
 from flask import Blueprint, request, jsonify
 from app.extensions import db, mail
+import logging
 from app.models import Restaurant, MenuItem, RestaurantImage, Layout, Review, LayoutVersion
 from flask_login import login_required, current_user
 from flask_mail import Message
@@ -8,8 +9,175 @@ import random
 import math
 from app.extensions import csrf
 from app.utils.response import json_response
-
 restaurant_bp = Blueprint('restaurant', __name__, url_prefix='/api/restaurants')
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+restaurant_bp = Blueprint('restaurant', __name__, url_prefix='/api/restaurants')
+
+PREDEFINED_LAYOUTS = {
+    # Small restaurant layouts (Capacity: 20-50)
+    'small_1': {
+        'tables': [
+            # VIP section
+            {'type': 'table', 'table_number': 1, 'x_coordinate': 15, 'y_coordinate': 15, 
+             'shape': 'circle', 'capacity': 6, 'table_type': 'vip'},
+            {'type': 'table', 'table_number': 2, 'x_coordinate': 15, 'y_coordinate': 30, 
+             'shape': 'circle', 'capacity': 6, 'table_type': 'vip'},
+            
+            # Main area
+            {'type': 'table', 'table_number': 3, 'x_coordinate': 50, 'y_coordinate': 50, 
+             'shape': 'rectangle', 'capacity': 4, 'table_type': 'standard'},
+            {'type': 'table', 'table_number': 4, 'x_coordinate': 65, 'y_coordinate': 50, 
+             'shape': 'rectangle', 'capacity': 4, 'table_type': 'standard'},
+            {'type': 'table', 'table_number': 5, 'x_coordinate': 50, 'y_coordinate': 65, 
+             'shape': 'rectangle', 'capacity': 4, 'table_type': 'standard'},
+            {'type': 'table', 'table_number': 6, 'x_coordinate': 65, 'y_coordinate': 65, 
+             'shape': 'rectangle', 'capacity': 4, 'table_type': 'standard'},
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Bar', 'x_coordinate': 80, 'y_coordinate': 20, 
+             'width': 15, 'height': 8, 'color': '#4a5568'},
+            {'type': 'furniture', 'name': 'Entrance', 'x_coordinate': 5, 'y_coordinate': 50, 
+             'width': 10, 'height': 20, 'color': '#718096'}
+        ]
+    },
+    
+    'small_2': {
+        'tables': [
+            # Circular arrangement
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 50 + 25*math.cos(angle), 
+             'y_coordinate': 50 + 25*math.sin(angle), 'shape': 'circle', 'capacity': 4, 
+             'table_type': 'standard'} 
+            for i, angle in enumerate([n*(2*math.pi/8) for n in range(8)])
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Show Kitchen', 'x_coordinate': 70, 'y_coordinate': 20, 
+             'width': 25, 'height': 15, 'color': '#2d3748'}
+        ]
+    },
+
+    # Medium restaurant layouts (Capacity: 50-100)
+    'medium_1': {
+        'tables': [
+            # Booths
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 10 + i*15, 'y_coordinate': 20, 
+             'shape': 'rectangle', 'capacity': 6, 'table_type': 'booth'} for i in range(4)
+        ] + [
+            # Central tables
+            {'type': 'table', 'table_number': i+5, 'x_coordinate': 50 + (i%2)*20, 
+             'y_coordinate': 50 + math.floor(i/2)*20, 'shape': 'circle', 'capacity': 4, 
+             'table_type': 'standard'} for i in range(12)
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Wine Bar', 'x_coordinate': 80, 'y_coordinate': 10, 
+             'width': 15, 'height': 25, 'color': '#2b6cb0'},
+            {'type': 'furniture', 'name': 'Patio', 'x_coordinate': 5, 'y_coordinate': 70, 
+             'width': 40, 'height': 25, 'color': '#48bb78'}
+        ]
+    },
+
+    'medium_2': {
+        'tables': [
+            # Grid layout with VIP section
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 20 + (i%3)*25, 
+             'y_coordinate': 30 + math.floor(i/3)*20, 'shape': 'rectangle', 'capacity': 4, 
+             'table_type': 'standard' if i < 6 else 'vip'} for i in range(12)
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Private Dining', 'x_coordinate': 70, 'y_coordinate': 70, 
+             'width': 25, 'height': 25, 'color': '#c53030'},
+            {'type': 'furniture', 'name': 'Sushi Counter', 'x_coordinate': 5, 'y_coordinate': 20, 
+             'width': 15, 'height': 30, 'color': '#4a5568'}
+        ]
+    },
+
+    # Large restaurant layouts (Capacity: 100+)
+    'large_1': {
+        'tables': [
+            # Multiple sections
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 15 + (i%4)*20, 
+             'y_coordinate': 20 + math.floor(i/4)*15, 'shape': 'rectangle', 'capacity': 4, 
+             'table_type': 'standard'} for i in range(24)
+        ] + [
+            {'type': 'table', 'table_number': 25, 'x_coordinate': 80, 'y_coordinate': 70, 
+             'shape': 'circle', 'capacity': 8, 'table_type': 'vip'},
+            {'type': 'table', 'table_number': 26, 'x_coordinate': 80, 'y_coordinate': 85, 
+             'shape': 'circle', 'capacity': 8, 'table_type': 'vip'}
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Main Bar', 'x_coordinate': 60, 'y_coordinate': 15, 
+             'width': 30, 'height': 10, 'color': '#2d3748'},
+            {'type': 'furniture', 'name': 'Stage', 'x_coordinate': 10, 'y_coordinate': 75, 
+             'width': 40, 'height': 20, 'color': '#c53030'}
+        ]
+    },
+
+    'large_2': {
+        'tables': [
+            # Mixed layout
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 50 + 30*math.cos(angle), 
+             'y_coordinate': 50 + 30*math.sin(angle), 'shape': 'circle', 'capacity': 4, 
+             'table_type': 'standard'} for i, angle in enumerate([n*(2*math.pi/16) for n in range(16)])
+        ] + [
+            {'type': 'table', 'table_number': i+17, 'x_coordinate': 20 + (i%3)*25, 
+             'y_coordinate': 20 + math.floor(i/3)*25, 'shape': 'rectangle', 'capacity': 6, 
+             'table_type': 'booth'} for i in range(12)
+        ],
+        'furniture': [
+            {'type': 'furniture', 'name': 'Lounge', 'x_coordinate': 70, 'y_coordinate': 70, 
+             'width': 25, 'height': 25, 'color': '#4a5568'},
+            {'type': 'furniture', 'name': 'Buffet Station', 'x_coordinate': 20, 'y_coordinate': 70, 
+             'width': 25, 'height': 15, 'color': '#2d3748'}
+        ]
+    }
+}
+
+# restaurant_routes.py
+def select_predefined_layout(restaurant_id, capacity):
+    if capacity <= 50:
+        layouts = ['small_1', 'small_2']
+    elif capacity <= 100:
+        layouts = ['medium_1', 'medium_2']
+    else:
+        layouts = ['large_1', 'large_2']
+    index = restaurant_id % len(layouts)  # Deterministic selection
+    return layouts[index]
+
+@restaurant_bp.route('/<int:restaurant_id>/layout', methods=['GET'])
+def get_restaurant_layout(restaurant_id):
+    restaurant = Restaurant.query.get_or_404(restaurant_id)
+    existing_layout = Layout.query.filter_by(restaurant_id=restaurant_id).all()
+    
+    if not existing_layout:
+        layout_key = select_predefined_layout(restaurant_id, restaurant.capacity)  # Updated
+        layout_data = PREDEFINED_LAYOUTS[layout_key]
+        
+        for item in layout_data['tables'] + layout_data['furniture']:
+            layout_item = Layout(
+                restaurant_id=restaurant_id,
+                type=item['type'],
+                table_type=item.get('table_type'),  # Now valid
+                table_number=item.get('table_number'),
+                x_coordinate=item.get('x_coordinate'),
+                y_coordinate=item.get('y_coordinate'),
+                shape=item.get('shape'),
+                capacity=item.get('capacity'),
+                name=item.get('name'),
+                width=item.get('width'),
+                height=item.get('height'),
+                color=item.get('color')
+            )
+            db.session.add(layout_item)
+        
+        db.session.commit()
+        existing_layout = Layout.query.filter_by(restaurant_id=restaurant_id).all()
+    
+    return json_response(data=[
+        {c.name: getattr(l, c.name) for c in l.__table__.columns}
+        for l in existing_layout
+    ], status=200)
 
 @restaurant_bp.route('', methods=['GET'])
 def get_restaurants():
@@ -33,7 +201,7 @@ def get_restaurants():
 @csrf.exempt
 def add_restaurant():
     if not current_user.is_admin:
-        return json_response(error="Admin privileges required", status=403)
+        return json_response(error="Unauthorized", status=403)
 
     data = request.json
     name = data.get('name')
@@ -42,38 +210,28 @@ def add_restaurant():
 
     # Basic validation
     if not name or len(name.strip()) < 2:
-        return json_response(error="Restaurant name must be at least 2 characters", status=400)
+        return json_response(error="Name must be at least 2 characters long", status=400)
     if not location or not cuisine:
         return json_response(error="Location and cuisine are required", status=400)
 
     try:
-        db.session.begin_nested()  # Start transaction
         new_restaurant = Restaurant(
             name=name,
             location=location,
             cuisine=cuisine,
-            promo=data.get('promo'),  # Add promo field
-            lat=data.get('lat'),
-            lon=data.get('lon'),
+            booking_duration=120,  # Add default booking duration
             opening_time=data.get('opening_time'),
-            closing_time=data.get('closing_time')
+            closing_time=data.get('closing_time'),
+            capacity=data.get('capacity', 50),
+            average_price=data.get('average_price')
         )
         db.session.add(new_restaurant)
-        db.session.flush()  # Assign ID before adding images
-
-        image_urls = data.get('image_urls', [])
-        for url in image_urls:
-            url = url.strip()
-            if url:
-                restaurant_image = RestaurantImage(restaurant_id=new_restaurant.id, image_url=url)
-                db.session.add(restaurant_image)
-
         db.session.commit()
+        return json_response(data={"message": "Restaurant added successfully"}, status=201)
     except Exception as e:
         db.session.rollback()
-        return json_response(error="Failed to create restaurant", status=500)
-
-    return json_response(data={"message": "Restaurant added successfully", "restaurant_id": new_restaurant.id}, status=201)
+        logger.error(f"Error adding restaurant: {str(e)}", exc_info=True)
+        return json_response(error="Error adding restaurant", status=500)
 
 @restaurant_bp.route('/<int:restaurant_id>', methods=['GET'])
 def restaurant_details(restaurant_id):
@@ -175,10 +333,12 @@ def search_restaurants():
 def get_menu(restaurant_id):
     menu_items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
     return json_response(data=[{
+        "id": item.id,
         "category": item.category,
         "name": item.name,
         "description": item.description,
-        "price": item.price
+        "price": item.price,
+        "image_url": item.image_url
     } for item in menu_items], status=200)
 
 @restaurant_bp.route('/recommendations', methods=['GET'])
@@ -260,145 +420,49 @@ def restaurant_recommendations():
 
     return json_response(data=result, status=200)
 
-@restaurant_bp.route('/<int:restaurant_id>/layout', methods=['GET'])
-def get_restaurant_layout(restaurant_id):
-    # Define safe region for tables (in percentages)
-    safe_x_min = 20
-    safe_x_max = 80
-    safe_y_min = 20
-    safe_y_max = 80
-
-    # Try to load existing tables from DB
-    tables = Layout.query.filter_by(restaurant_id=restaurant_id).all()
-
-    # If no tables exist, generate a baseline layout
-    if not tables:
-        # Randomly choose between a ring layout and a grid layout
-        if random.random() < 0.5:
-            # Ring layout within safe zone: center at (50,50) and radius that keeps tables in [20,80]
-            total_tables = 8
-            max_radius = min(50 - safe_x_min, safe_x_max - 50)  # = 30
-            radius_px = random.randint(10, int(max_radius))  # choose a radius between 10 and 30
-            for i in range(total_tables):
-                angle = 2 * math.pi * i / total_tables
-                # Compute percentage positions
-                x_percent = 50 + radius_px * math.cos(angle)
-                y_percent = 50 + radius_px * math.sin(angle)
-                # Ensure values are clamped into safe zone
-                x_percent = max(safe_x_min, min(safe_x_max, x_percent))
-                y_percent = max(safe_y_min, min(safe_y_max, y_percent))
-                new_table = Layout(
-                    restaurant_id=restaurant_id,
-                    table_number=i + 1,
-                    x_coordinate=x_percent,
-                    y_coordinate=y_percent,
-                    shape='circle',
-                    capacity=4
-                )
-                db.session.add(new_table)
-        else:
-            # Grid layout within safe zone
-            rows = 3
-            cols = 3
-            # Compute spacing so that the grid fits within safe region.
-            # safe region width in % = (safe_x_max - safe_x_min)
-            horizontal_spacing = (safe_x_max - safe_x_min) / (cols - 1) if cols > 1 else 0
-            vertical_spacing = (safe_y_max - safe_y_min) / (rows - 1) if rows > 1 else 0
-
-            table_number = 1
-            for row in range(rows):
-                for col in range(cols):
-                    x_percent = safe_x_min + col * horizontal_spacing
-                    y_percent = safe_y_min + row * vertical_spacing
-                    new_table = Layout(
-                        restaurant_id=restaurant_id,
-                        table_number=table_number,
-                        x_coordinate=x_percent,
-                        y_coordinate=y_percent,
-                        shape='rectangle',
-                        capacity=4
-                    )
-                    db.session.add(new_table)
-                    table_number += 1
-        db.session.commit()
-        tables = Layout.query.filter_by(restaurant_id=restaurant_id).all()
-
-    # Build layout items for response
-    layout_data = [{
-        "id": t.id,
-        "table_number": t.table_number,
-        "x_coordinate": t.x_coordinate,
-        "y_coordinate": t.y_coordinate,
-        "shape": t.shape,
-        "capacity": t.capacity,
-        "type": "table"
-    } for t in tables]
-
-    # Always add ephemeral furniture in fixed positions outside the safe zone:
-    furniture = [
-        {
-            "id": 101,
-            "name": "Bar",
-            "x_coordinate": 5,   # top-left corner (outside safe zone)
-            "y_coordinate": 5,
-            "width": 10,
-            "height": 8,
-            "color": "#6c757d",
-            "type": "furniture"
-        },
-        {
-            "id": 102,
-            "name": "Stage",
-            "x_coordinate": 90,  # bottom-right corner (outside safe zone)
-            "y_coordinate": 90,
-            "width": 10,
-            "height": 10,
-            "color": "#343a40",
-            "type": "furniture"
-        }
-    ]
-
-    return json_response(data=layout_data + furniture, status=200)
-
 @restaurant_bp.route('/<int:restaurant_id>/layout', methods=['PUT'])
 @login_required
 @csrf.exempt
 def update_layout(restaurant_id):
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
+    try:
+        data = request.get_json()
+        print("Received layout data:", data)  # Log received data
+        new_layout = data.get('layout', [])
+        
+        if not new_layout:
+            return json_response(error="Layout data is empty", status=400)
 
-    data = request.json
-    new_layout = data.get('layout')
-    if not new_layout:
-        return json_response(error="No layout data provided", status=400)
-
-    # Validate coordinates for each table
-    for table_data in new_layout:
-        x = table_data.get('x_coordinate')
-        y = table_data.get('y_coordinate')
-        if not (20 <= x <= 80) or not (20 <= y <= 80):
-            return json_response(
-                error=f"Table {table_data.get('id')}: Coordinates must be between 20% and 80%",
-                status=400
+        Layout.query.filter_by(restaurant_id=restaurant_id).delete()
+        
+        for item in new_layout:
+            if not all(key in item for key in ['type', 'x_coordinate', 'y_coordinate']):
+                return json_response(error="Missing required fields in layout item", status=400)
+            
+            new_item = Layout(
+                restaurant_id=restaurant_id,
+                type=item['type'],
+                x_coordinate=float(item['x_coordinate']),
+                y_coordinate=float(item['y_coordinate']),
+                table_type=item.get('table_type'),
+                table_number=item.get('table_number'),
+                capacity=item.get('capacity', 4),
+                width=item.get('width'),
+                height=item.get('height'),
+                color=item.get('color', '#4a5568'),
+                name=item.get('name', 'New Item'),
+                shape=item.get('shape', 'rectangle')
             )
+            db.session.add(new_item)
 
-    # Update existing tables
-    for table_data in new_layout:
-        table = Layout.query.get(table_data.get('id'))
-        if table and table.restaurant_id == restaurant_id:
-            table.x_coordinate = float(table_data.get('x_coordinate', table.x_coordinate))
-            table.y_coordinate = float(table_data.get('y_coordinate', table.y_coordinate))
-            table.capacity = int(table_data.get('capacity', table.capacity))
-
-    new_version = LayoutVersion(
-        restaurant_id=restaurant_id,
-        layout_data=new_layout
-    )
-    db.session.add(new_version)
-    db.session.commit()
-
-    return json_response(data={"message": "Layout updated successfully"}, status=200)
-
+        db.session.commit()
+        return json_response(data={"message": "Layout updated successfully"}, status=200)
+    except Exception as e:
+        db.session.rollback()
+        print("Error saving layout:", str(e))  # Log error
+        return json_response(error=f"Error saving layout: {str(e)}", status=500)
+    
 @restaurant_bp.route('/<int:restaurant_id>/suggest-layout', methods=['POST'])
 @login_required
 @csrf.exempt

@@ -28,72 +28,77 @@ L.Icon.Default.mergeOptions({
 function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // State for search query and filter options
   const [searchQuery, setSearchQuery] = useState('');
-  const [tempSearchQuery, setTempSearchQuery] = useState(''); // Temporary state for search input
+  const [tempSearchQuery, setTempSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     cuisine: '',
     minRating: 0,
-    maxDistance: 10 // currently not used in filtering logic
+    maxDistance: 10,
   });
 
   const handleSearch = () => {
-    setSearchQuery(tempSearchQuery); // Update the main search query when the button is clicked
+    setSearchQuery(tempSearchQuery);
   };
 
-  // Fetch restaurant count
+  const debouncedSetSearchQuery = debounce((value) => {
+    setSearchQuery(value);
+  }, 500);
+
+  // Fetch restaurant count (public endpoint, no `enabled: !!user`)
   const { data: restaurantCount, isLoading: isLoadingRestaurantCount, error: errorRestaurantCount } = useQuery({
     queryKey: ['restaurantCount'],
     queryFn: () => axiosClient.get('/restaurants/count').then(res => res.data.data.count),
   });
 
-  // Fetch bookings this week
+  // Fetch bookings this week (protected endpoint, requires authentication)
   const { data: bookingsThisWeek, isLoading: isLoadingBookingsThisWeek, error: errorBookingsThisWeek } = useQuery({
     queryKey: ['bookingsThisWeek'],
     queryFn: () => axiosClient.get('/bookings/count/this-week').then(res => res.data.data.count),
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
-  // Fetch restaurant data from the API using react-query
-  const { data: restaurants, isLoading: isLoadingRestaurants, error: errorRestaurants } = useQuery('restaurants', () =>
-    axiosClient.get('/restaurants').then(res => res.data.data)
-  );
+  // Fetch restaurant data (public endpoint, no `enabled: !!user`)
+  const { data: restaurants, isLoading: isLoadingRestaurants, error: errorRestaurants } = useQuery({
+    queryKey: ['restaurants'],
+    queryFn: () => axiosClient.get('/restaurants').then(res => res.data.data),
+  });
 
-  const { data: recommendations, isLoading: isLoadingRecommendations, error: errorRecommendations } = useQuery(['recommendations', user?.id], 
-    () => axiosClient.get('/restaurants/recommendations').then(res => res.data.data), 
-    { 
-      staleTime: 5 * 60 * 1000, 
-      enabled: !!user && !user.is_admin 
-    }
-  );
+  // Fetch recommendations (protected, already has `enabled: !!user && !user.is_admin`)
+  const { data: recommendations, isLoading: isLoadingRecommendations, error: errorRecommendations } = useQuery({
+    queryKey: ['recommendations', user?.id],
+    queryFn: () => axiosClient.get('/restaurants/recommendations').then(res => res.data.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user && !user.is_admin,
+  });
 
-  const { data: userBookings, isLoading: isLoadingUserBookings, error: errorUserBookings } = useQuery(['userBookings', user?.id], 
-    () => axiosClient.get('/bookings/user').then(res => res.data.data), 
-    { 
-      staleTime: 5 * 60 * 1000, 
-      enabled: !!user && !user.is_admin 
-    }
-  );
+  // Fetch user bookings (protected, already has `enabled: !!user && !user.is_admin`)
+  const { data: userBookings, isLoading: isLoadingUserBookings, error: errorUserBookings } = useQuery({
+    queryKey: ['userBookings', user?.id],
+    queryFn: () => axiosClient.get('/bookings/user').then(res => res.data.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user && !user.is_admin,
+  });
 
-  const { data: analytics, isLoading: isLoadingAnalytics, error: errorAnalytics } = useQuery(
-    'analytics',
-    () => axiosClient.get('/bookings/analytics').then(res => res.data.data), 
-    { 
-      enabled: !!user && user.is_admin, 
-      staleTime: 5 * 60 * 1000 
-    }
-  );
+  // Fetch analytics (protected, already has `enabled: !!user && user.is_admin`)
+  const { data: analytics, isLoading: isLoadingAnalytics, error: errorAnalytics } = useQuery({
+    queryKey: ['analytics'],
+    queryFn: () => axiosClient.get('/bookings/analytics').then(res => res.data.data),
+    enabled: !!user && user.is_admin,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Derive the list of cuisines from the fetched restaurants (for the filter dropdown)
+  // Derive cuisines for filter dropdown
   const cuisines = Array.from(new Set((restaurants || []).map(rest => rest.cuisine)));
 
-  // Filter restaurants based on search text, selected cuisine, and minimum rating
+  // Filter restaurants based on search and filters
   const filteredRestaurants = (restaurants || []).filter(rest => {
-    const rating = rest.rating || 4; // default rating if not provided
+    const rating = rest.rating || 4;
     const matchesSearch =
       rest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       rest.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (rest.location && rest.location.toLowerCase().includes(searchQuery.toLowerCase())); // Added location filtering
+      (rest.location && rest.location.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCuisine = filters.cuisine
       ? rest.cuisine.toLowerCase() === filters.cuisine.toLowerCase()
       : true;
@@ -101,17 +106,16 @@ function HomePage() {
     return matchesSearch && matchesCuisine && matchesRating;
   });
 
-  // Default map center (e.g., London); replace with real geocoding if available
+  // Default map center (London)
   const defaultPosition = [51.505, -0.09];
-  // Mock function to compute restaurant coordinates with a slight random offset
   const getRestaurantCoordinates = (rest) => {
     return [
       defaultPosition[0] + Math.random() * 0.1,
-      defaultPosition[1] + Math.random() * 0.1
+      defaultPosition[1] + Math.random() * 0.1,
     ];
   };
 
-  // Settings for the promo carousel using react-slick
+  // Slider settings for promo carousel
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -123,11 +127,10 @@ function HomePage() {
     pauseOnHover: true,
     arrows: true,
     cssEase: 'cubic-bezier(0.23, 1, 0.32, 1)',
-    adaptiveHeight: true
+    adaptiveHeight: true,
   };
 
   const promoRestaurants = Array.isArray(restaurants) ? restaurants.filter(rest => rest.promo) : [];
-  // Filter top-rated restaurants
   const topRatedRestaurants = (restaurants || [])
     .filter(rest => (rest.rating || 4) >= 4.5)
     .slice(0, 3);
@@ -147,7 +150,7 @@ function HomePage() {
   if (errorRestaurants || errorRecommendations || errorUserBookings || errorAnalytics) {
     console.error('Error loading data:', errorRestaurants || errorRecommendations || errorUserBookings || errorAnalytics);
     return (
-      <div className="alert alert-danger mx-auto mt-4" style={{maxWidth: '600px'}}>
+      <div className="alert alert-danger mx-auto mt-4" style={{ maxWidth: '600px' }}>
         {errorRestaurants && `Failed to load restaurants. ${errorRestaurants.message}`}
         {errorRecommendations && `Failed to load recommendations. ${errorRecommendations.message}`}
         {errorUserBookings && `Failed to load user bookings. ${errorUserBookings.message}`}
@@ -163,10 +166,14 @@ function HomePage() {
         <div className="search-filter-bar">
           <input
             type="text"
+            aria-label="Search restaurants"
             className="search-input"
             placeholder="Search restaurants..."
             value={tempSearchQuery}
-            onChange={(e) => setTempSearchQuery(e.target.value)} // Update temporary search query
+            onChange={(e) => {
+              setTempSearchQuery(e.target.value);
+              debouncedSetSearchQuery(e.target.value);
+            }}
           />
           <button className="btn-search" onClick={handleSearch}>Search</button>
           <div className="filter-group">
@@ -202,14 +209,17 @@ function HomePage() {
           <Slider {...sliderSettings}>
             {promoRestaurants.length > 0 ? (
               promoRestaurants.map(rest => (
-                <div key={rest.id} className="promo-slide" 
-                    style={{ backgroundImage: `url(${rest.image_url || '/default-promo-bg.jpg'})` }}>
+                <div
+                  key={rest.id}
+                  className="promo-slide"
+                  style={{ backgroundImage: `url(${rest.image_url || '/default-promo-bg.jpg'})` }}
+                >
                   <div className="promo-content">
                     <h3>{rest.name}</h3>
                     <p>{rest.promo}</p>
-                    <button 
+                    <button
                       className="promo-cta"
-                      onClick={() => navigate(`/restaurants/details/${rest.id}`)}
+                      onClick={() => navigate('/book', { state: { restaurantId: rest.id } })}
                     >
                       Book Now →
                     </button>
@@ -221,7 +231,7 @@ function HomePage() {
                 <div className="promo-content">
                   <h3>Special Offers Coming Soon</h3>
                   <p>Stay tuned for exclusive dining deals!</p>
-                  <button 
+                  <button
                     className="promo-cta"
                     onClick={() => navigate('/restaurants')}
                   >
@@ -295,16 +305,16 @@ function HomePage() {
         <h2>Top Rated Restaurants</h2>
         <div className="restaurants-grid">
           {topRatedRestaurants.map(rest => (
-            <CardComponent 
+            <CardComponent
               key={rest.id}
               restaurant={rest}
               onViewDetails={() => navigate(`/restaurants/details/${rest.id}`)}
-              onBookNow={() => navigate(`/restaurants/${rest.id}/layout`)}
+              onBookNow={() => navigate('/book', { state: { restaurantId: rest.id } })}
             />
           ))}
         </div>
 
-        {/* ADMIN DASHBOARD */}
+        {/* Admin Dashboard */}
         {user?.is_admin && (
           <div className="admin-dashboard">
             <h2>Admin Dashboard</h2>
@@ -316,10 +326,10 @@ function HomePage() {
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="bookings" 
-                      fill="#8884d8" 
+                    <Area
+                      type="monotone"
+                      dataKey="bookings"
+                      fill="#8884d8"
                       stroke="#483d8b"
                     />
                   </AreaChart>
@@ -339,37 +349,37 @@ function HomePage() {
           </div>
         )}
 
-        {/* USER RECOMMENDATIONS */}
+        {/* User Recommendations */}
         {user && !user.is_admin && (
           <div className="recommendations-section">
             <h2>Recommended For You</h2>
             <div className="restaurants-grid">
               {recommendations?.map(rest => (
-                <CardComponent 
+                <CardComponent
                   key={rest.id}
                   restaurant={rest}
                   onViewDetails={() => navigate(`/restaurants/details/${rest.id}`)}
-                  onBookNow={() => navigate(`/restaurants/${rest.id}/layout`)}
+                  onBookNow={() => navigate('/book', { state: { restaurantId: rest.id } })}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* POPULAR RESTAURANTS */}
+        {/* Popular Restaurants */}
         <h2>Popular Restaurants</h2>
         <div className="restaurants-grid">
           {(restaurants || []).map(rest => (
-            <CardComponent 
+            <CardComponent
               key={rest.id}
               restaurant={rest}
               onViewDetails={() => navigate(`/restaurants/details/${rest.id}`)}
-              onBookNow={() => navigate(`/restaurants/${rest.id}/layout`)}
+              onBookNow={() => navigate('/book', { state: { restaurantId: rest.id } })}
             />
           ))}
         </div>
 
-        {/* MY UPCOMING BOOKINGS */}
+        {/* My Upcoming Bookings */}
         <h2>My Upcoming Bookings</h2>
         {userBookings?.length > 0 ? (
           <ul className="list-group mb-3">

@@ -1,53 +1,104 @@
-/* Global styles */
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f8f9fa;
-  color: #2d3436;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.alert {
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-  z-index: 5000 !important;
-  position: relative;
-}
-
-.alert-danger {
-  background: #ffe3e3;
-  color: #c92a2a;
-}
-
-.alert-success {
-  background: #d3f9d8;
-  color: #2b8a3e;
-}
-
-body, html {
-  margin: 0; 
-  padding: 0;
-  /* other resets if you prefer */
-}
-
+/* App.css - Component Scaffolding */
+/* Navigation */
 .navbar {
   position: fixed;
   top: 0;
   width: 100%;
+  height: 64px;
+  background: var(--surface-color);
+  box-shadow: var(--shadow-sm);
   z-index: 1000;
-  height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-md);
 }
 
-/* Add padding to pages */
-.homepage-container,
-.restaurant-list-container,
-.restaurant-details-page,
-.restaurant-layout-page {
-  padding-top: 80px; /* Match navbar height */
+/* Page Layout */
+.page-container {
+  padding-top: 80px; /* Navbar offset */
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+/* Alerts & Notifications */
+.alert {
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  margin: var(--space-sm) 0;
+  border: 1px solid transparent;
+  
+  &-success {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+  }
+  
+  &-error {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+  
+  &-info {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+  }
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: var(--space-md);
+  
+  label {
+    display: block;
+    margin-bottom: var(--space-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  
+  input, select, textarea {
+    width: 100%;
+    padding: var(--space-xs);
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-sm);
+    background: var(--surface-color);
+    
+    &:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+  }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  
+  &-primary {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    
+    &:hover {
+      background: var(--primary-dark);
+    }
+  }
+  
+  &-secondary {
+    background: var(--secondary-color);
+    color: white;
+    
+    &:hover {
+      background: var(--secondary-dark);
+    }
+  }
 }

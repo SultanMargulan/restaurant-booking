@@ -206,14 +206,16 @@ function AdminRestaurantPage() {
                 <div className="restaurant-header">
                   <h4>{restaurant.name}</h4>
                   <div className="actions">
-                    <button 
+                    <button
                       className="btn-icon"
+                      aria-label="Edit restaurant"
                       onClick={() => startEditing(restaurant)}
                     >
                       <FiEdit />
                     </button>
                     <button
                       className="btn-icon danger"
+                      aria-label="Delete restaurant"
                       onClick={() => handleDelete(restaurant.id)}
                     >
                       <FiTrash2 />

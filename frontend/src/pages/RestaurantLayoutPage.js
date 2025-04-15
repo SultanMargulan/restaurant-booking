@@ -1,18 +1,20 @@
+// src/pages/RestaurantLayoutPage.js
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axiosClient from '../services/axiosClient';
 import { useAuth } from '../contexts/AuthContext';
-import '../styles/RestaurantLayoutPage.css';
+import { FaChair, FaCouch, FaWineGlassAlt } from 'react-icons/fa';
+import "../styles/RestaurantLayoutPage.css";
 
 function RestaurantLayoutPage() {
   const { restaurantId } = useParams();
+  const { user } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [layout, setLayout] = useState([]);
   const [availability, setAvailability] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [suggestLoading, setSuggestLoading] = useState(false);
-  const { user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,21 +23,19 @@ function RestaurantLayoutPage() {
         setRestaurant(restaurantRes.data.data);
 
         const resLayout = await axiosClient.get(`/restaurants/${restaurantId}/layout`);
-        setLayout(resLayout.data.data || []); // Handle nested data
+        setLayout(resLayout.data.data || []);
 
+        // Optionally load table availability (if desired)
         const today = new Date();
-        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T12:00`; // Add default time
-        
+        const formattedDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}T12:00`;
         const resAvailability = await axiosClient.get('/bookings/availability', {
-          params: { 
-            restaurant_id: restaurantId, 
-            date: formattedDate // Now includes time
-          }
+          params: { restaurant_id: restaurantId, date: formattedDate }
         });
-        setAvailability((resAvailability.data.available_tables || []).reduce((acc, tableId) => {
-          acc[tableId] = true;
+        const avail = (resAvailability.data.available_tables || []).reduce((acc, id) => {
+          acc[id] = true;
           return acc;
-        }, {}));        
+        }, {});
+        setAvailability(avail);
       } catch (err) {
         console.error('Layout load error:', err);
         setError('Failed to load layout data');
@@ -63,47 +63,42 @@ function RestaurantLayoutPage() {
   if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
 
   return (
-    <div className="container mt-4">
+    <div className="container">
       {restaurant && <h2>{restaurant.name} Floor Plan</h2>}
-      
-      <div
-        className="layout-container"
-        style={{
-          position: 'relative',
-          width: '800px',
-          height: '600px',
-          border: '1px solid #ccc',
-          margin: '0 auto',
-          backgroundColor: '#f8f9fa',
-          overflow: 'hidden'
-        }}
-      >
-        {layout.map((item) => {
+      <div className="layout-container">
+        {layout.map(item => {
           if (item.type === 'table' || !item.type) {
             const isAvailable = availability[item.id];
             return (
               <div
                 key={`table-${item.id}`}
+                className="booking-table"
                 style={{
-                  position: 'absolute',
                   left: `calc(${item.x_coordinate}% - 30px)`,
                   top: `calc(${item.y_coordinate}% - 30px)`,
-                  width: '60px',
-                  height: '60px',
-                  backgroundColor: '#f0ad4e',
-                  borderRadius: item.shape === 'circle' ? '50%' : '5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid #333',
-                  color: '#fff',
-                  fontWeight: 'bold'
+                  borderRadius: item.shape === 'circle' ? '50%' : '8px',
                 }}
               >
-                {item.table_number}
-                <div className="table-status-indicator">
-                  <div className="led" style={{backgroundColor: isAvailable ? '#4CAF50' : '#F44336'}} />
-                  <span>{isAvailable ? 'Available' : 'Booked'}</span>
+                <div className="table-surface">
+                  <div className="table-number">T{item.table_number}</div>
+                  <div className="table-type">
+                    {item.table_type === 'vip' && <FaWineGlassAlt style={{ color: 'white' }} />}
+                    {item.table_type === 'booth' && <FaCouch style={{ color: 'white' }} />}
+                    {item.table_type === 'standard' && <FaChair style={{ color: 'white' }} />}
+                  </div>
+                </div>
+                <div className="stool-container">
+                  {Array.from({ length: item.capacity }, (_, i) => {
+                    const angle = (360 / item.capacity) * i;
+                    const rad = angle * (Math.PI / 180);
+                    const offset = item.shape === 'circle' ? 43 : 42;
+                    const stoolSize = 16;
+                    const left = 30 + offset * Math.cos(rad) - stoolSize / 2;
+                    const top = 30 + offset * Math.sin(rad) - stoolSize / 2;
+                    return (
+                      <FaChair key={i} className="stool-icon" style={{ left: `${left}px`, top: `${top}px`, color: '#000' }} />
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -111,19 +106,13 @@ function RestaurantLayoutPage() {
             return (
               <div
                 key={`furniture-${item.id}`}
+                className="furniture-item"
                 style={{
-                  position: 'absolute',
                   left: `${item.x_coordinate}%`,
                   top: `${item.y_coordinate}%`,
                   width: `${item.width}%`,
                   height: `${item.height}%`,
                   backgroundColor: item.color || '#666',
-                  border: '2px solid #000',
-                  opacity: 0.8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff'
                 }}
               >
                 {item.name}
@@ -133,19 +122,12 @@ function RestaurantLayoutPage() {
           return null;
         })}
       </div>
-
-      {/* Admin-only controls */}
       {user && user.is_admin && (
         <>
-          <div className="text-center mt-3">
-            <button className="btn btn-secondary" onClick={handleSuggestLayout} disabled={suggestLoading}>
-              {suggestLoading ? 'Suggesting...' : 'Suggest Layout'}
-            </button>
-          </div>
           <div className="text-center mt-2">
-            <Link className="btn btn-primary" to={`/admin/layout/${restaurantId}`}>
+            <button className="btn btn-warning" onClick={() => window.location.href = `/admin/layout/${restaurantId}`}>
               Edit Layout
-            </Link>
+            </button>
           </div>
         </>
       )}

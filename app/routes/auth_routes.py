@@ -1,4 +1,5 @@
 # auth_routes.py
+import logging
 from flask import Blueprint, request, jsonify, session
 from app.extensions import db, mail
 from app.models import User, UserPreference, Review, Restaurant, Booking
@@ -13,8 +14,12 @@ from app.utils.auth import api_login_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 @auth_bp.route('/login', methods=['POST'])
-@csrf.exempt 
+@csrf.exempt
 def login():
     data = request.json
     email = data.get('email')
@@ -22,10 +27,11 @@ def login():
     user = User.query.filter_by(email=email).first()
     
     if user and check_password_hash(user.password, password):
-        session.clear()  # Clear previous session
+        session.clear()  # Clear any existing session data
         session.permanent = True
         otp_code = str(random.randint(100000, 999999))
-        session[f'otp_{user.id}'] = otp_code  # Store OTP in a named session key
+        session[f'otp_{user.id}'] = otp_code  # Store OTP with user ID
+        logger.debug(f"Login - Stored OTP for user {user.id}: {otp_code}")
         
         try:
             msg = Message('Your OTP Code', recipients=[user.email])
@@ -34,35 +40,60 @@ def login():
             return json_response(data={
                 "message": "OTP sent",
                 "otp_required": True,
-                "temp_user_id": user.id  # Include user ID for verification
+                "temp_user_id": user.id
             }, status=200)
         except Exception as e:
+            logger.error(f"Failed to send OTP: {str(e)}")
             return json_response(error=f"Failed to send OTP: {str(e)}", status=500)
     else:
+        logger.warning(f"Login failed for email {email}")
         return json_response(error="Invalid credentials", status=401)
 
 @auth_bp.route('/verify-otp', methods=['POST'])
 @csrf.exempt
 def verify_otp():
-    data = request.json
+    data = request.get_json()
+    if not data:
+        logger.error("Verify OTP - Invalid request body")
+        return json_response(error="Invalid request body", status=400)
+
     otp_code = data.get('otp_code')
-    user_id = data.get('temp_user_id')  # Get from frontend
-    
-    if not user_id:
-        return json_response(error="Session expired", status=401)
-        
+    temp_user_id = data.get('temp_user_id')
+
+    if not otp_code:
+        logger.error("Verify OTP - Missing OTP code")
+        return json_response(error="Missing OTP code", status=400)
+    if not temp_user_id:
+        logger.error("Verify OTP - Missing user ID")
+        return json_response(error="Missing user ID", status=400)
+
+    # Convert temp_user_id to integer to match session key
+    try:
+        user_id = int(temp_user_id)
+    except (ValueError, TypeError):
+        logger.error(f"Verify OTP - Invalid user ID format: {temp_user_id}")
+        return json_response(error="Invalid user ID format", status=400)
+
     user = User.query.get(user_id)
     if not user:
+        logger.error(f"Verify OTP - User not found: {user_id}")
         return json_response(error="User not found", status=404)
-    
-    # Get OTP from session using user_id
+
     stored_code = session.get(f'otp_{user_id}')
-    if not stored_code or otp_code != stored_code:
+    logger.debug(f"Verify OTP - Retrieved OTP for user {user_id}: {stored_code}, Submitted OTP: {otp_code}")
+    
+    if not stored_code:
+        logger.error(f"Verify OTP - Session expired or OTP not found for user {user_id}")
+        return json_response(error="Session expired or OTP not found", status=400)
+    if str(otp_code) != str(stored_code):  # Ensure both are strings for comparison
+        logger.error(f"Verify OTP - Invalid OTP for user {user_id}. Expected {stored_code}, got {otp_code}")
         return json_response(error="Invalid OTP", status=400)
-    
-    session.pop(f'otp_{user_id}', None)
-    login_user(user)
-    
+
+    session.pop(f'otp_{user_id}', None)  # Clear OTP after successful verification
+    login_user(user, remember=True)
+    session.permanent = True
+
+    logger.info(f"Verify OTP - User {user_id} logged in successfully")
     return json_response(data={
         "message": "Login successful",
         "user": {

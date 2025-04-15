@@ -1,43 +1,13 @@
 /* AdminLayoutPage.css */
-.admin-container {
-  max-width: 800px;
-  background: rgba(255, 255, 255, 0.15);
-  padding: 20px;
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.admin-container h2 {
-  text-align: center;
-  color: var(--primary-color);
-}
-
-.admin-container .list-group-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.admin-container button {
-  padding: 10px;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 8px;
-  transition: all 0.3s;
-}
-
-.admin-container button:hover {
-  background: var(--secondary-color);
-}
 
 .admin-layout-page {
+  width: 90%;
   max-width: 1200px;
-  margin: 2rem auto;
+  margin: 5rem auto;
   padding: 2rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .header-section {
@@ -47,70 +17,111 @@
   margin-bottom: 2rem;
 }
 
-.search-filter input {
-  padding: 0.75rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  min-width: 300px;
+.header-section h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin: 0;
 }
 
-.layout-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 2rem;
-}
-
-.restaurant-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+.search-filter {
   display: flex;
+  align-items: center;
+}
+
+.search-filter input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 250px;
+}
+
+.admin-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.admin-restaurant-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  overflow: visible;  /* Ensure full content is shown */
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-restaurant-card:hover {
+  transform: translateY(-3px);
 }
 
 .card-image {
-  width: 120px;
-  background: #f8fafc;
+  width: 100%;
+  /* Remove fixed height so image container can adapt */
+  max-height: 200px;
+  border-bottom: 1px solid #ddd;
 }
 
 .card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .card-content {
-  flex: 1;
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-content h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  color: #333;
 }
 
 .card-meta {
-  margin: 1rem 0;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #6c757d;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.card-meta span {
-  font-size: 0.9rem;
-  color: #64748b;
-}
-
 .card-actions {
-  display: flex;
-  gap: 0.5rem;
+  margin-top: auto;
 }
 
 .btn-primary {
-  background: var(--primary-color);
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
+  background: #0d6efd;
+  color: #fff;
+  padding: 0.6rem 1rem;
   border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+  border: none;
   cursor: pointer;
-  transition: background 0.3s ease;
 }
 
 .btn-primary:hover {
-  background: var(--secondary-color);
+  background: #0b5ed7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-layout-page {
+    padding: 1rem;
+  }
+  .search-filter input {
+    width: 200px;
+  }
+  .admin-layout-grid {
+    grid-template-columns: 1fr;
+  }
 }

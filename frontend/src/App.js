@@ -16,6 +16,7 @@ import AdminLayoutPage from './pages/AdminLayoutPage';
 import RestaurantDetailsPage from './pages/RestaurantsDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import ErrorBoundary from './components/ErrorBoundary';
+import Footer from './components/Footer';
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
           }
         />
       </Routes>
+      <Footer />
     </ErrorBoundary>
   );
 }

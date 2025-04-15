@@ -5,7 +5,7 @@ import axiosClient from '../services/axiosClient';
 import { useQuery } from 'react-query';
 import { FiMapPin, FiClock, FiWifi, FiDollarSign, FiUsers } from 'react-icons/fi';
 import { GiKnifeFork } from 'react-icons/gi';
-import { FaParking } from 'react-icons/fa';
+import { FaParking, FaChair, FaCouch, FaWineGlassAlt } from 'react-icons/fa';
 import { MdOutlineChildFriendly } from 'react-icons/md';
 import "../styles/RestaurantDetailsPage.css";
 
@@ -16,6 +16,7 @@ function RestaurantDetailsPage() {
 
   const [restaurant, setRestaurant] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [layoutPreview, setLayoutPreview] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rating, setRating] = useState(5);
@@ -29,15 +30,13 @@ function RestaurantDetailsPage() {
     axiosClient.get(`/restaurants/${restaurantId}/menu`).then(res => res.data.data)
   );
 
-  // Extract menu categories dynamically
   const menuCategories = Array.from(new Set(menuItems?.map(item => item.category) || []));
 
-  // Mock features - replace with real data
   const features = [
     { icon: <FaParking />, label: 'Parking' },
     { icon: <FiWifi />, label: 'Free WiFi' },
     { icon: <MdOutlineChildFriendly />, label: 'Kid Friendly' }
-  ];  
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,9 +46,12 @@ function RestaurantDetailsPage() {
         setRestaurant(detailsRes.data.data);
 
         const reviewsRes = await axiosClient.get(`/restaurants/${restaurantId}/reviews`);
-        setReviews(reviewsRes.data.data.reviews || []); // Corrected to .reviews
+        setReviews(reviewsRes.data.data.reviews || []);
+
+        const layoutRes = await axiosClient.get(`/restaurants/${restaurantId}/layout`);
+        setLayoutPreview(layoutRes.data.data);
       } catch (err) {
-        console.error('Error fetching data:', err); // Add logging for debugging
+        console.error('Error fetching data:', err);
         setError(err.response?.data?.error || 'Failed to load data.');
       } finally {
         setLoading(false);
@@ -75,7 +77,7 @@ function RestaurantDetailsPage() {
       });
       setSuccessMsg('Review added successfully!');
       const reviewsRes = await axiosClient.get(`/restaurants/${restaurantId}/reviews`);
-      setReviews(reviewsRes.data.data?.items || []); // Handle nested data
+      setReviews(reviewsRes.data.data?.reviews || []);
 
       setRating(5);
       setComment('');
@@ -92,8 +94,6 @@ function RestaurantDetailsPage() {
 
   if (loading) return <div className="container mt-4">Loading...</div>;
   if (error) return <div className="container mt-4 alert alert-danger">{error}</div>;
-
-  // Add error boundary fallback
   if (!Array.isArray(reviews)) {
     return <div className="container mt-4 alert alert-danger">Invalid reviews data format</div>;
   }
@@ -126,13 +126,12 @@ function RestaurantDetailsPage() {
                 </div>
                 <div className="info-card">
                   <h3>Average Price</h3>
-                  <p>${restaurant.average_price || 'N/A'}</p>
+                  <p>{restaurant.average_price || 'N/A'} KZT</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Feature Icons */}
           <div className="feature-badges">
             {features.map((feat, index) => (
               <div key={index} className="feature-badge">
@@ -142,7 +141,80 @@ function RestaurantDetailsPage() {
             ))}
           </div>
 
-          {/* Menu Preview */}
+          <div className="layout-preview-section">
+            <h3>Restaurant Layout</h3>
+            <div className="layout-preview-container">
+              {layoutPreview.map(item => {
+                if (item.type === 'table' || !item.type) {
+                  return (
+                    <div
+                      key={`table-${item.id}`}
+                      className="booking-table"
+                      style={{
+                        left: `calc(${item.x_coordinate}% - 30px)`,
+                        top: `calc(${item.y_coordinate}% - 30px)`,
+                        borderRadius: item.shape === 'circle' ? '50%' : '8px',
+                      }}
+                    >
+                      <div className="table-surface">
+                        <div className="table-number">T{item.table_number}</div>
+                        <div className="table-type">
+                          {item.table_type === 'vip' && <FaWineGlassAlt style={{ color: 'black' }} />}
+                          {item.table_type === 'booth' && <FaCouch style={{ color: 'black' }} />}
+                          {item.table_type === 'standard' && <FaChair style={{ color: 'black' }} />}
+                        </div>
+                      </div>
+                      <div className="stool-container">
+                        {Array.from({ length: item.capacity }, (_, i) => {
+                          const angle = (360 / item.capacity) * i;
+                          const rad = angle * (Math.PI / 180);
+                          const offset = item.shape === 'circle' ? 43 : 42;
+                          const stoolSize = 16;
+                          const left = 30 + offset * Math.cos(rad) - stoolSize / 2;
+                          const top = 30 + offset * Math.sin(rad) - stoolSize / 2;
+                          return (
+                            <FaChair 
+                              key={i} 
+                              className="stool-icon" 
+                              style={{ 
+                                left: `${left}px`, 
+                                top: `${top}px`, 
+                                color: '#000' 
+                              }} 
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                } else if (item.type === 'furniture') {
+                  return (
+                    <div
+                      key={`furniture-${item.id}`}
+                      className="furniture-item"
+                      style={{
+                        left: `${item.x_coordinate}%`,
+                        top: `${item.y_coordinate}%`,
+                        width: `${item.width}%`,
+                        height: `${item.height}%`,
+                        backgroundColor: item.color || '#666',
+                      }}
+                    >
+                      {item.name}
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+            <div className="layout-legend">
+              <div><FaChair /> Standard Table</div>
+              <div><FaCouch /> Booth</div>
+              <div><FaWineGlassAlt /> VIP Table</div>
+              <div><div className="furniture-legend-sample" /> Furniture</div>
+            </div>
+          </div>
+
           <div className="menu-section">
             <h2>Menu Highlights</h2>
             <div className="menu-categories">
@@ -159,17 +231,23 @@ function RestaurantDetailsPage() {
             <div className="menu-items">
               {menuItems?.filter(item => item.category === selectedMenuCategory).map((item, index) => (
                 <div key={index} className="menu-item">
+                  {item.image_url && (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="menu-item-image"
+                    />
+                  )}
                   <div className="item-info">
                     <h4>{item.name}</h4>
                     {item.description && <p>{item.description}</p>}
                   </div>
-                  <span className="item-price">${item.price}</span>
+                  <span className="item-price">{item.price} KZT</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Enhanced Booking CTA */}
           <div className="booking-cta-section">
             <div className="cta-content">
               <h3>Ready to Book?</h3>
@@ -180,12 +258,12 @@ function RestaurantDetailsPage() {
                 </div>
                 <div className="cta-feature">
                   <FiDollarSign size={24} />
-                  <span>Avg. ${restaurant.average_price} per person</span>
+                  <span>Avg. {restaurant.average_price} KZT per person</span>
                 </div>
               </div>
               <button 
                 className="cta-button"
-                onClick={() => navigate(`/restaurants/${restaurant.id}/layout`)}
+                onClick={() => navigate('/book', { state: { restaurantId: restaurant.id } })}
               >
                 Choose Table & Book Now
               </button>

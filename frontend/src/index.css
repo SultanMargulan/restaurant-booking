@@ -1,65 +1,84 @@
-/* index.css - Global Enhancements */
+/* index.css - Global Design System */
 :root {
-  --primary-color: #2563eb;  /* More modern blue */
-  --secondary-color: #1d4ed8;
-  --text-color: #1e293b;
-  --background-color: #ffffff;
-  --surface-color: #f8fafc;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  /* Color Scheme */
+  --primary-color: #3b82f6;
+  --primary-dark: #2563eb;
+  --secondary-color: #10b981;
+  --secondary-dark: #059669;
+  --surface-color: #ffffff;
+  --background-color: #f8fafc;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  
+  /* Semantic Colors */
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  
+  /* Elevation */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
+  /* Spacing */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
+/* Base Styles */
 body {
-  font-family: 'Poppins', sans-serif;
-  background-color: var(--background-color);
-  color: var(--text-color);
-  transition: all 0.3s ease-in-out;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
+    'Helvetica Neue', sans-serif;
+  line-height: 1.5;
+  background: var(--background-color);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Smooth Animations */
-* {
-  transition: all 0.3s ease-in-out;
-}
-
-button {
-  cursor: pointer;
-  transition: all 0.3s ease-in-out;
-  border-radius: 8px;
-  padding: 12px 18px;
+/* Typography Scale */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 var(--space-sm);
+  line-height: 1.2;
   font-weight: 600;
-  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
 }
 
-button:hover {
-  transform: scale(1.05);
+h1 { font-size: 2.488rem; }
+h2 { font-size: 2.074rem; }
+h3 { font-size: 1.728rem; }
+h4 { font-size: 1.44rem; }
+h5 { font-size: 1.2rem; }
+h6 { font-size: 1rem; }
+
+/* Global Transitions */
+*, *::before, *::after {
+  transition: 
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
-/* Glassmorphism UI */
-.glass-container {
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: var(--card-shadow);
+/* Utility Classes */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
 }
 
-/* Modern Cards */
-.card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: var(--card-shadow);
-  padding: 20px;
-  margin: 20px 0;
-  transition: 0.3s;
-}
-
-.card:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+.elevated {
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-md);
 }
