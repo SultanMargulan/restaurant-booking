@@ -1,7 +1,7 @@
 from flask import Flask, send_from_directory
 from .config import Config
 from flask_migrate import Migrate
-from .extensions import db, mail, login_manager, csrf
+from .extensions import db, mail, login_manager, csrf, limiter
 from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
 from datetime import timedelta
@@ -34,10 +34,14 @@ def create_app(config_class=Config):
 
     # Enable CORS
     CORS(app, 
-         resources={r"/*": {"origins": "http://localhost:3000"}}, 
-         supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+         resources={
+             r"/api/*": {
+                 "origins": ["http://localhost:3000"],
+                 "supports_credentials": True,
+                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+             }
+         })
 
     # Initialize extensions
     db.init_app(app)
@@ -46,7 +50,8 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     Migrate(app, db)
-
+    limiter.init_app(app)  # Add this line
+    
     # Register user loader
     from .models import User
     @login_manager.user_loader

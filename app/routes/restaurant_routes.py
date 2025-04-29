@@ -1,32 +1,29 @@
 # restaurant_routes.py
-from flask import Blueprint, request, jsonify
-from app.extensions import db, mail
+from flask import Blueprint, request
+from app.extensions import db
 import logging
-from app.models import Restaurant, MenuItem, RestaurantImage, Layout, Review, LayoutVersion
+from app.models import Restaurant, MenuItem, RestaurantImage, Layout, Review
 from flask_login import login_required, current_user
-from flask_mail import Message
+# Removed unused import
 import random
 import math
 from app.extensions import csrf
 from app.utils.response import json_response
+
 restaurant_bp = Blueprint('restaurant', __name__, url_prefix='/api/restaurants')
 
 # Configure logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-restaurant_bp = Blueprint('restaurant', __name__, url_prefix='/api/restaurants')
 
 PREDEFINED_LAYOUTS = {
     # Small restaurant layouts (Capacity: 20-50)
     'small_1': {
         'tables': [
-            # VIP section
             {'type': 'table', 'table_number': 1, 'x_coordinate': 15, 'y_coordinate': 15, 
              'shape': 'circle', 'capacity': 6, 'table_type': 'vip'},
             {'type': 'table', 'table_number': 2, 'x_coordinate': 15, 'y_coordinate': 30, 
              'shape': 'circle', 'capacity': 6, 'table_type': 'vip'},
-            
-            # Main area
             {'type': 'table', 'table_number': 3, 'x_coordinate': 50, 'y_coordinate': 50, 
              'shape': 'rectangle', 'capacity': 4, 'table_type': 'standard'},
             {'type': 'table', 'table_number': 4, 'x_coordinate': 65, 'y_coordinate': 50, 
@@ -43,10 +40,8 @@ PREDEFINED_LAYOUTS = {
              'width': 10, 'height': 20, 'color': '#718096'}
         ]
     },
-    
     'small_2': {
         'tables': [
-            # Circular arrangement
             {'type': 'table', 'table_number': i+1, 'x_coordinate': 50 + 25*math.cos(angle), 
              'y_coordinate': 50 + 25*math.sin(angle), 'shape': 'circle', 'capacity': 4, 
              'table_type': 'standard'} 
@@ -61,14 +56,12 @@ PREDEFINED_LAYOUTS = {
     # Medium restaurant layouts (Capacity: 50-100)
     'medium_1': {
         'tables': [
-            # Booths
-            {'type': 'table', 'table_number': i+1, 'x_coordinate': 10 + i*15, 'y_coordinate': 20, 
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 10 + i*15, 'y_coordinate': 35, 
              'shape': 'rectangle', 'capacity': 6, 'table_type': 'booth'} for i in range(4)
         ] + [
-            # Central tables
             {'type': 'table', 'table_number': i+5, 'x_coordinate': 50 + (i%2)*20, 
              'y_coordinate': 50 + math.floor(i/2)*20, 'shape': 'circle', 'capacity': 4, 
-             'table_type': 'standard'} for i in range(12)
+             'table_type': 'standard'} for i in range(8)
         ],
         'furniture': [
             {'type': 'furniture', 'name': 'Wine Bar', 'x_coordinate': 80, 'y_coordinate': 10, 
@@ -77,13 +70,12 @@ PREDEFINED_LAYOUTS = {
              'width': 40, 'height': 25, 'color': '#48bb78'}
         ]
     },
-
     'medium_2': {
         'tables': [
-            # Grid layout with VIP section
-            {'type': 'table', 'table_number': i+1, 'x_coordinate': 20 + (i%3)*25, 
-             'y_coordinate': 30 + math.floor(i/3)*20, 'shape': 'rectangle', 'capacity': 4, 
-             'table_type': 'standard' if i < 6 else 'vip'} for i in range(12)
+            {'type': 'table', 'table_number': i+1, 'x_coordinate': 25 + (i%3)*25, 
+             'y_coordinate': 35 + math.floor(i/3)*20, 'shape': 'rectangle', 'capacity': 4, 
+             'table_type': 'standard' if i < 6 else 'vip'} for i in range(9)
+            if not (70 <= 25 + (i%3)*25 <= 95 and 70 <= 35 + math.floor(i/3)*20 <= 95)
         ],
         'furniture': [
             {'type': 'furniture', 'name': 'Private Dining', 'x_coordinate': 70, 'y_coordinate': 70, 
@@ -96,45 +88,104 @@ PREDEFINED_LAYOUTS = {
     # Large restaurant layouts (Capacity: 100+)
     'large_1': {
         'tables': [
-            # Multiple sections
-            {'type': 'table', 'table_number': i+1, 'x_coordinate': 15 + (i%4)*20, 
-             'y_coordinate': 20 + math.floor(i/4)*15, 'shape': 'rectangle', 'capacity': 4, 
-             'table_type': 'standard'} for i in range(24)
-        ] + [
-            {'type': 'table', 'table_number': 25, 'x_coordinate': 80, 'y_coordinate': 70, 
-             'shape': 'circle', 'capacity': 8, 'table_type': 'vip'},
-            {'type': 'table', 'table_number': 26, 'x_coordinate': 80, 'y_coordinate': 85, 
-             'shape': 'circle', 'capacity': 8, 'table_type': 'vip'}
+            # Main dining area - symmetrical grid layout
+            *[  # Left section
+                {'type': 'table', 'table_number': i + 1,
+                 'x_coordinate': 15 + (i % 3) * 20,
+                 'y_coordinate': 20 + (i // 3) * 20,
+                 'shape': 'rectangle', 'capacity': 4,
+                 'table_type': 'standard'}
+                for i in range(9)
+            ],
+            *[  # Right section
+                {'type': 'table', 'table_number': i + 10,
+                 'x_coordinate': 65 + (i % 2) * 20,
+                 'y_coordinate': 20 + (i // 2) * 20,
+                 'shape': 'rectangle', 'capacity': 4,
+                 'table_type': 'standard'}
+                for i in range(6)
+            ],
+            # VIP area with round tables
+            {'type': 'table', 'table_number': 16,
+             'x_coordinate': 40, 'y_coordinate': 75,
+             'shape': 'circle', 'capacity': 6,
+             'table_type': 'vip'},
+            {'type': 'table', 'table_number': 17,
+             'x_coordinate': 60, 'y_coordinate': 75,
+             'shape': 'circle', 'capacity': 6,
+             'table_type': 'vip'}
         ],
         'furniture': [
-            {'type': 'furniture', 'name': 'Main Bar', 'x_coordinate': 60, 'y_coordinate': 15, 
-             'width': 30, 'height': 10, 'color': '#2d3748'},
-            {'type': 'furniture', 'name': 'Stage', 'x_coordinate': 10, 'y_coordinate': 75, 
-             'width': 40, 'height': 20, 'color': '#c53030'}
+            {'type': 'furniture', 'name': 'Main Bar',
+             'x_coordinate': 75, 'y_coordinate': 10,
+             'width': 20, 'height': 8,
+             'color': '#2d3748'},
+            {'type': 'furniture', 'name': 'Entrance',
+             'x_coordinate': 5, 'y_coordinate': 45,
+             'width': 8, 'height': 15,
+             'color': '#718096'},
+            {'type': 'furniture', 'name': 'Lounge',
+             'x_coordinate': 80, 'y_coordinate': 70,
+             'width': 15, 'height': 25,
+             'color': '#4a5568'}
         ]
     },
-
     'large_2': {
         'tables': [
-            # Mixed layout
-            {'type': 'table', 'table_number': i+1, 'x_coordinate': 50 + 30*math.cos(angle), 
-             'y_coordinate': 50 + 30*math.sin(angle), 'shape': 'circle', 'capacity': 4, 
-             'table_type': 'standard'} for i, angle in enumerate([n*(2*math.pi/16) for n in range(16)])
-        ] + [
-            {'type': 'table', 'table_number': i+17, 'x_coordinate': 20 + (i%3)*25, 
-             'y_coordinate': 20 + math.floor(i/3)*25, 'shape': 'rectangle', 'capacity': 6, 
-             'table_type': 'booth'} for i in range(12)
+            # Central booth section
+            *[
+                {'type': 'table', 'table_number': i + 1,
+                 'x_coordinate': 40 + (i % 2) * 20,
+                 'y_coordinate': 25 + (i // 2) * 15,
+                 'shape': 'rectangle', 'capacity': 6,
+                 'table_type': 'booth'}
+                for i in range(6)
+            ],
+            # Window-side tables
+            *[
+                {'type': 'table', 'table_number': i + 7,
+                 'x_coordinate': 15,
+                 'y_coordinate': 20 + i * 20,
+                 'shape': 'circle', 'capacity': 4,
+                 'table_type': 'standard'}
+                for i in range(4)
+            ],
+            # Bar-side high tables
+            *[
+                {'type': 'table', 'table_number': i + 11,
+                 'x_coordinate': 85,
+                 'y_coordinate': 30 + i * 15,
+                 'shape': 'circle', 'capacity': 2,
+                 'table_type': 'high'}
+                for i in range(4)
+            ],
+            # VIP corner section
+            {'type': 'table', 'table_number': 15,
+             'x_coordinate': 40, 'y_coordinate': 80,
+             'shape': 'circle', 'capacity': 8,
+             'table_type': 'vip'},
+            {'type': 'table', 'table_number': 16,
+             'x_coordinate': 60, 'y_coordinate': 80,
+             'shape': 'circle', 'capacity': 8,
+             'table_type': 'vip'}
         ],
         'furniture': [
-            {'type': 'furniture', 'name': 'Lounge', 'x_coordinate': 70, 'y_coordinate': 70, 
-             'width': 25, 'height': 25, 'color': '#4a5568'},
-            {'type': 'furniture', 'name': 'Buffet Station', 'x_coordinate': 20, 'y_coordinate': 70, 
-             'width': 25, 'height': 15, 'color': '#2d3748'}
+            {'type': 'furniture', 'name': 'Bar Counter',
+             'x_coordinate': 70, 'y_coordinate': 10,
+             'width': 25, 'height': 10,
+             'color': '#2d3748'},
+            {'type': 'furniture', 'name': 'Entrance',
+             'x_coordinate': 5, 'y_coordinate': 45,
+             'width': 8, 'height': 15,
+             'color': '#718096'},
+            {'type': 'furniture', 'name': 'Wine Display',
+             'x_coordinate': 70, 'y_coordinate': 75,
+             'width': 15, 'height': 20,
+             'color': '#742a2a'}
         ]
     }
 }
 
-# restaurant_routes.py
 def select_predefined_layout(restaurant_id, capacity):
     if capacity <= 50:
         layouts = ['small_1', 'small_2']
@@ -142,7 +193,7 @@ def select_predefined_layout(restaurant_id, capacity):
         layouts = ['medium_1', 'medium_2']
     else:
         layouts = ['large_1', 'large_2']
-    index = restaurant_id % len(layouts)  # Deterministic selection
+    index = restaurant_id % len(layouts)
     return layouts[index]
 
 @restaurant_bp.route('/<int:restaurant_id>/layout', methods=['GET'])
@@ -151,14 +202,14 @@ def get_restaurant_layout(restaurant_id):
     existing_layout = Layout.query.filter_by(restaurant_id=restaurant_id).all()
     
     if not existing_layout:
-        layout_key = select_predefined_layout(restaurant_id, restaurant.capacity)  # Updated
+        layout_key = select_predefined_layout(restaurant_id, restaurant.capacity)
         layout_data = PREDEFINED_LAYOUTS[layout_key]
         
         for item in layout_data['tables'] + layout_data['furniture']:
             layout_item = Layout(
                 restaurant_id=restaurant_id,
                 type=item['type'],
-                table_type=item.get('table_type'),  # Now valid
+                table_type=item.get('table_type'),
                 table_number=item.get('table_number'),
                 x_coordinate=item.get('x_coordinate'),
                 y_coordinate=item.get('y_coordinate'),
@@ -208,7 +259,6 @@ def add_restaurant():
     location = data.get('location')
     cuisine = data.get('cuisine')
 
-    # Basic validation
     if not name or len(name.strip()) < 2:
         return json_response(error="Name must be at least 2 characters long", status=400)
     if not location or not cuisine:
@@ -219,7 +269,7 @@ def add_restaurant():
             name=name,
             location=location,
             cuisine=cuisine,
-            booking_duration=120,  # Add default booking duration
+            booking_duration=120,
             opening_time=data.get('opening_time'),
             closing_time=data.get('closing_time'),
             capacity=data.get('capacity', 50),
@@ -270,7 +320,6 @@ def edit_restaurant(restaurant_id):
     restaurant.opening_time = data.get('opening_time', restaurant.opening_time)
     restaurant.closing_time = data.get('closing_time', restaurant.closing_time)
 
-    # Remove existing images and add new ones
     RestaurantImage.query.filter_by(restaurant_id=restaurant.id).delete()
     image_urls = data.get('image_urls', [])
     for url in image_urls:
@@ -289,7 +338,6 @@ def delete_restaurant(restaurant_id):
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
     restaurant = Restaurant.query.get_or_404(restaurant_id)
-    # Delete related layouts first
     Layout.query.filter_by(restaurant_id=restaurant.id).delete()
     db.session.delete(restaurant)
     db.session.commit()
@@ -321,7 +369,7 @@ def search_restaurants():
         "id": r.id,
         "name": r.name,
         "cuisine": r.cuisine,
-        "rating": r.rating,  # Now using the computed property
+        "rating": r.rating,
         "lat": r.lat,
         "lon": r.lon,
         "features": r.features,
@@ -344,18 +392,10 @@ def get_menu(restaurant_id):
 @restaurant_bp.route('/recommendations', methods=['GET'])
 @login_required
 def restaurant_recommendations():
-    """
-    A simple content-based recommender:
-    1) Look at current_user's preferences.
-    2) For each restaurant, compute a 'score' based on matching preferences.
-    3) Sort by score desc, return top 5.
-    """
     user_pref = current_user.preferences[0] if current_user.preferences else None
     restaurants = Restaurant.query.all()
 
     if not user_pref:
-        # If user has no preferences, just return all or random.
-        # Return them unfiltered for simplicity
         return json_response(data=[
             {
                 "id": r.id,
@@ -365,58 +405,25 @@ def restaurant_recommendations():
             } for r in restaurants
         ], status=200)
 
-    # Extract user prefs
     pref_cuisine = user_pref.preferred_cuisine.lower() if user_pref.preferred_cuisine else None
     dietary_res = user_pref.dietary_restrictions.lower() if user_pref.dietary_restrictions else ""
-    ambiance_pref = user_pref.ambiance_preference.lower() if user_pref.ambiance_preference else ""
+    # Removed unused variable
 
-    # We'll store (score, restaurant_obj) in a list
     scored_restaurants = []
 
     for r in restaurants:
         score = 0
-
-        # 1) Cuisine match => +2
         if pref_cuisine and pref_cuisine in r.cuisine.lower():
             score += 2
-
-        # 2) If "no peanuts" and r might be "peanut-heavy" => skip or reduce
-        # For example, if user said "no peanuts" in dietaryRes,
-        # But your restaurant data doesn't store it, you can skip or
-        # do partial matching. We'll just do a naive example:
-        if "no peanuts" in dietary_res:
-            # If the restaurant has 'peanut' in its name/cuisine => reduce points
-            if "peanut" in r.cuisine.lower():
-                # or skip entirely
-                score -= 999  # effectively kill it
-        # If the user said "vegan" but r has "steak" in cuisine => also kill it, etc.
-
-        # 3) Ambiance => if you had a field r.ambiance
-        # We'll do a naive example
-        # if r.ambiance and ambiance_pref in r.ambiance.lower():
-        #     score += 1
-
-        # If the restaurant hasn't been effectively killed, keep it
+        if "no peanuts" in dietary_res and "peanut" in r.cuisine.lower():
+            score -= 999
         scored_restaurants.append((score, r))
 
-    # Sort by score descending
     scored_restaurants.sort(key=lambda x: x[0], reverse=True)
-
-    # Return top 5 or top 10
     top_5 = scored_restaurants[:5]
 
-    # Convert to JSON
-    result = []
-    for (scr, rest) in top_5:
-        if scr < 0:
-            continue  # skip if negative
-        result.append({
-            "id": rest.id,
-            "name": rest.name,
-            "location": rest.location,
-            "cuisine": rest.cuisine,
-            # "score": scr, # optionally return the score
-        })
+    result = [{"id": rest.id, "name": rest.name, "location": rest.location, "cuisine": rest.cuisine}
+              for (scr, rest) in top_5 if scr >= 0]
 
     return json_response(data=result, status=200)
 
@@ -428,7 +435,6 @@ def update_layout(restaurant_id):
         return json_response(error="Admin privileges required", status=403)
     try:
         data = request.get_json()
-        print("Received layout data:", data)  # Log received data
         new_layout = data.get('layout', [])
         
         if not new_layout:
@@ -460,9 +466,8 @@ def update_layout(restaurant_id):
         return json_response(data={"message": "Layout updated successfully"}, status=200)
     except Exception as e:
         db.session.rollback()
-        print("Error saving layout:", str(e))  # Log error
         return json_response(error=f"Error saving layout: {str(e)}", status=500)
-    
+
 @restaurant_bp.route('/<int:restaurant_id>/suggest-layout', methods=['POST'])
 @login_required
 @csrf.exempt
@@ -470,7 +475,6 @@ def suggest_layout(restaurant_id):
     if not current_user.is_admin:
         return json_response(error="Admin privileges required", status=403)
     
-    # Remove existing layout for a fresh start
     Layout.query.filter_by(restaurant_id=restaurant_id).delete()
     db.session.commit()
 
@@ -479,18 +483,37 @@ def suggest_layout(restaurant_id):
     container_height = 600
     center_x = container_width / 2
     center_y = container_height / 2
-    max_radius = min(50 - 20, 80 - 50)  # using safe zone 20-80%
-    radius = random.randint(10, 30)
+    # Removed unused variable
+    radius = random.randint(15, 30)
     offset_angle = random.random() * math.pi
 
-    MIN_DISTANCE = 5.0  # Minimum distance between tables (in percentage)
+    MIN_DISTANCE = 10.0  # Increased for better spacing
+    SAFE_ZONE = 15.0  # Safe zone around furniture
+
+    # Define furniture for collision checks
+    furniture = [
+        {'x': 5, 'y': 5, 'width': 10, 'height': 8},
+        {'x': 90, 'y': 90, 'width': 10, 'height': 10}
+    ]
+
+    def is_valid_position(x, y, generated_tables):
+        for f in furniture:
+            fx, fy, fw, fh = f['x'], f['y'], f['width'], f['height']
+            if (fx - SAFE_ZONE < x < fx + fw + SAFE_ZONE and 
+                fy - SAFE_ZONE < y < fy + fh + SAFE_ZONE):
+                return False
+        for t in generated_tables:
+            dx = x - t['x']
+            dy = y - t['y']
+            if math.sqrt(dx**2 + dy**2) < MIN_DISTANCE:
+                return False
+        return True
 
     generated_tables = []
     for i in range(total_tables):
         collision = True
         attempts = 0
         while collision and attempts < 100:
-            # Generate candidate position
             angle = 2 * math.pi * i / total_tables + offset_angle
             x_px = center_x + radius * math.cos(angle)
             y_px = center_y + radius * math.sin(angle)
@@ -499,22 +522,13 @@ def suggest_layout(restaurant_id):
             x_percent = max(20, min(80, x_percent))
             y_percent = max(20, min(80, y_percent))
 
-            # Check for collisions
-            collision = False
-            for existing in generated_tables:
-                dx = existing['x'] - x_percent
-                dy = existing['y'] - y_percent
-                distance = math.sqrt(dx**2 + dy**2)
-                if distance < MIN_DISTANCE:
-                    collision = True
-                    radius += 1  # Adjust radius to avoid collision
-                    break
-
+            collision = not is_valid_position(x_percent, y_percent, generated_tables)
+            if collision:
+                radius += 1
             attempts += 1
 
         if not collision:
             generated_tables.append({'x': x_percent, 'y': y_percent})
-            # Create and save new table
             new_table = Layout(
                 restaurant_id=restaurant_id,
                 table_number=i + 1,
@@ -537,30 +551,11 @@ def suggest_layout(restaurant_id):
         "type": "table"
     } for t in tables]
 
-    # Ephemeral furniture always appended in fixed safe spots
-    furniture = [
-        {
-            "id": 101,
-            "name": "Bar",
-            "x_coordinate": 5,
-            "y_coordinate": 5,
-            "width": 10,
-            "height": 8,
-            "color": "#6c757d",
-            "type": "furniture"
-        },
-        {
-            "id": 102,
-            "name": "Stage",
-            "x_coordinate": 90,
-            "y_coordinate": 90,
-            "width": 10,
-            "height": 10,
-            "color": "#343a40",
-            "type": "furniture"
-        }
+    furniture_data = [
+        {"id": 101, "name": "Bar", "x_coordinate": 5, "y_coordinate": 5, "width": 10, "height": 8, "color": "#6c757d", "type": "furniture"},
+        {"id": 102, "name": "Stage", "x_coordinate": 90, "y_coordinate": 90, "width": 10, "height": 10, "color": "#343a40", "type": "furniture"}
     ]
-    return json_response(data=layout_data + furniture, status=200)
+    return json_response(data=layout_data + furniture_data, status=200)
 
 @restaurant_bp.route('/<int:restaurant_id>/reviews', methods=['GET'])
 def list_reviews(restaurant_id):

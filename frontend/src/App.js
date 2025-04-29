@@ -17,6 +17,7 @@ import RestaurantDetailsPage from './pages/RestaurantsDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Footer from './components/Footer';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   return (
@@ -80,6 +81,8 @@ function App() {
         />
       </Routes>
       <Footer />
+      {/* Add ChatWidget with z-index handling via Tailwind */}
+      <ChatWidget />
     </ErrorBoundary>
   );
 }

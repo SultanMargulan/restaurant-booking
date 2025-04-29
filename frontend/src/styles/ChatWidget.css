@@ -1,0 +1,115 @@
+/* ChatWidget-specific BEM-style naming */
+.tm-chat {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  width: 360px;
+  max-width: 90vw;
+}
+
+.tm-chat__card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color, #fff);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.tm-chat__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  cursor: pointer;
+}
+
+.tm-chat__body {
+  height: 320px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--background-color, #f8fafc);
+}
+
+.tm-chat__message {
+  margin-bottom: 0.75rem;
+  display: flex;
+}
+
+.tm-chat__message--user {
+  justify-content: flex-end;
+}
+
+.tm-chat__bubble {
+    max-width: 80%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    white-space: pre-wrap;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+.tm-chat__bubble--assistant {
+  background: #e2e8f0;
+  color: var(--text-primary, #1a202c);
+}
+
+.tm-chat__bubble--user {
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+}
+
+.tm-chat__input-container {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: var(--surface-color, #fff);
+}
+
+.tm-chat__input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.tm-chat__input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.tm-chat__send-button {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.tm-chat__send-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.tm-chat__typing {
+  display: inline-block;
+  width: 1.2rem;
+  animation: tm-chat-blink 1s infinite;
+}
+
+@keyframes tm-chat-blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}

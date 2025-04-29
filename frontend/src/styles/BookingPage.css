@@ -81,7 +81,7 @@
 /* Right Panel: Layout Preview */
 .booking-layout-panel {
   position: relative;
-  width: 870px;
+  width: 1000px;
   background: #f8f9fa;
   border-radius: 12px;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.05);
@@ -128,14 +128,12 @@
 
 /* Unavailable table */
 .booking-table.unavailable {
-  background: #f8d7da !important;
-  border-color: #f5c6cb !important;
   color: #721c24 !important;
   box-shadow: none;
 }
 .booking-table.unavailable::after {
   content: "UNAVAILABLE";
-  font-size: 12px;
+  font-size: 8.5px;
   color: #dc3545;
   font-weight: bold;
   position: absolute;
