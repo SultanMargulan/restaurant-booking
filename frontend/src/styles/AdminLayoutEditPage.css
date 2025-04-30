@@ -346,3 +346,34 @@
 .draggable-item:hover .delete-item {
   opacity: 1;
 }
+
+/* ----------  MOBILE  ≤768 px  ---------- */
+@media (max-width: 768px) {
+  .layout-editor-container{
+    margin:1rem .5rem;
+    padding:1rem;
+  }
+
+  .header-section{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:.75rem;
+  }
+
+  /* canvas shrinks with safe scrolling */
+  .layout-grid{
+    width:100%;
+    height:55vh;
+  }
+
+  /* stack controls, keep big Save button last */
+  .controls-section{
+    grid-template-columns:1fr;
+    gap:1rem;
+  }
+
+  .item-controls{
+    grid-template-columns:1fr 1fr;
+    gap:.75rem;
+  }
+}

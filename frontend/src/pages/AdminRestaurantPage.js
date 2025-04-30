@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axiosClient from '../services/axiosClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiImage } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiImage, FiMapPin } from 'react-icons/fi';
 import "../styles/AdminRestaurantPage.css";
 
 function AdminRestaurantPage() {
@@ -25,6 +25,12 @@ function AdminRestaurantPage() {
   const [editCuisine, setEditCuisine] = useState('');
   const [editImages, setEditImages] = useState('');
 
+  // Add coordinate states
+  const [newLat, setNewLat] = useState('');
+  const [newLng, setNewLng] = useState('');
+  const [editLat, setEditLat] = useState('');
+  const [editLng, setEditLng] = useState('');
+
   useEffect(() => {
     if (!user || !user.is_admin) {
       // If not admin, redirect
@@ -39,7 +45,20 @@ function AdminRestaurantPage() {
     try {
       setLoading(true);
       const res = await axiosClient.get('/restaurants');
-      setRestaurants(res.data.data);
+      console.log('Restaurant data:', res.data.data);
+      
+      // Fetch full details for each restaurant to get images
+      const detailedRestaurants = await Promise.all(
+        res.data.data.map(async (restaurant) => {
+          const detailRes = await axiosClient.get(`/restaurants/${restaurant.id}`);
+          return {
+            ...restaurant,
+            image_urls: detailRes.data.data.images || [] // Use the images array from details
+          };
+        })
+      );
+      
+      setRestaurants(detailedRestaurants);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch restaurants.');
     } finally {
@@ -52,24 +71,25 @@ function AdminRestaurantPage() {
     e.preventDefault();
     setError('');
     try {
-      // images = multiline. We'll turn them into array of lines in the back end or in code
       const payload = {
         name: newName,
         location: newLocation,
         cuisine: newCuisine,
+        latitude: parseFloat(newLat) || null,
+        longitude: parseFloat(newLng) || null,
         image_urls: newImages
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0)
       };
       await axiosClient.post('/restaurants', payload);
-      // refresh the list
       fetchRestaurants();
-      // clear fields
       setNewName('');
       setNewLocation('');
       setNewCuisine('');
       setNewImages('');
+      setNewLat('');
+      setNewLng('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add restaurant.');
     }
@@ -81,28 +101,29 @@ function AdminRestaurantPage() {
     setEditName(rest.name);
     setEditLocation(rest.location);
     setEditCuisine(rest.cuisine);
-    // Combine images if you want to show them in multiline
-    const joinedImages = rest.images?.join('\n') || '';
+    setEditLat(rest.latitude || '');
+    setEditLng(rest.longitude || '');
+    // Fix: Change from rest.images to rest.image_urls
+    const joinedImages = rest.image_urls?.join('\n') || '';
     setEditImages(joinedImages);
   };
   const cancelEditing = () => {
     setEditId(null);
   };
-  const handleEditRestaurant = async (e) => {
-    e.preventDefault();
+  // Update the handleEditRestaurant function to accept restaurant data instead of event
+  const handleEditRestaurant = async (restaurantData) => {
     setError('');
     try {
       const payload = {
-        name: editName,
-        location: editLocation,
-        cuisine: editCuisine,
-        image_urls: editImages
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 0)
+        name: restaurantData.name,
+        location: restaurantData.location,
+        cuisine: restaurantData.cuisine,
+        latitude: parseFloat(restaurantData.latitude) || null,
+        longitude: parseFloat(restaurantData.longitude) || null,
+        // Fix: Change from restaurantData.images to match what EditForm sends
+        image_urls: restaurantData.image_urls
       };
-      await axiosClient.put(`/restaurants/${editId}`, payload);
-      // refresh
+      await axiosClient.put(`/restaurants/${restaurantData.id}`, payload);
       fetchRestaurants();
       setEditId(null);
     } catch (err) {
@@ -168,6 +189,32 @@ function AdminRestaurantPage() {
             </div>
           </div>
 
+          <div className="form-grid">
+            <div className="form-group">
+              <label><FiMapPin /> Latitude</label>
+              <input
+                type="number"
+                step="any"
+                className="form-input"
+                value={newLat}
+                onChange={(e) => setNewLat(e.target.value)}
+                placeholder="e.g. 51.5074"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label><FiMapPin /> Longitude</label>
+              <input
+                type="number"
+                step="any"
+                className="form-input"
+                value={newLng}
+                onChange={(e) => setNewLng(e.target.value)}
+                placeholder="e.g. -0.1278"
+              />
+            </div>
+          </div>
+
           <div className="form-group">
             <label><FiImage /> Image URLs</label>
             <textarea
@@ -225,11 +272,27 @@ function AdminRestaurantPage() {
                 <p className="restaurant-meta">
                   <span className="cuisine-badge">{restaurant.cuisine}</span>
                   <span>{restaurant.location}</span>
+                  {restaurant.lat && restaurant.lon && (
+                    <span className="coordinates">
+                      ({restaurant.lat}, {restaurant.lon})
+                    </span>
+                  )}
                 </p>
                 <div className="image-gallery">
-                  {restaurant.images?.map((img, idx) => (
-                    <img key={idx} src={img} alt="Restaurant" />
-                  ))}
+                  {Array.isArray(restaurant.image_urls) && restaurant.image_urls.length > 0 ? (
+                    restaurant.image_urls.map((url, idx) => (
+                      <img 
+                        key={idx} 
+                        src={url} 
+                        alt={`${restaurant.name}`} 
+                        onError={(e) => {
+                          e.target.src = '/static/placeholder.png';
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div className="no-images">No images available</div>
+                  )}
                 </div>
               </>
             )}
@@ -240,11 +303,16 @@ function AdminRestaurantPage() {
   );
 }
 
+// Update the EditForm component
 const EditForm = ({ restaurant, onSave, onCancel }) => {
+  const [editImages, setEditImages] = useState(
+    Array.isArray(restaurant.image_urls) ? restaurant.image_urls.join('\n') : ''
+  );
   const [editName, setEditName] = useState(restaurant.name);
   const [editLocation, setEditLocation] = useState(restaurant.location);
   const [editCuisine, setEditCuisine] = useState(restaurant.cuisine);
-  const [editImages, setEditImages] = useState(restaurant.images?.join('\n') || '');
+  const [editLat, setEditLat] = useState(restaurant.latitude || '');
+  const [editLng, setEditLng] = useState(restaurant.longitude || '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -253,7 +321,13 @@ const EditForm = ({ restaurant, onSave, onCancel }) => {
       name: editName,
       location: editLocation,
       cuisine: editCuisine,
-      images: editImages.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+      latitude: editLat,
+      longitude: editLng,
+      // Fix: Change to match backend property name
+      image_urls: editImages
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
     });
   };
 
@@ -295,17 +369,53 @@ const EditForm = ({ restaurant, onSave, onCancel }) => {
         </div>
       </div>
 
+      <div className="form-grid">
+        <div className="form-group">
+          <label><FiMapPin /> Latitude</label>
+          <input
+            type="number"
+            step="any"
+            className="form-input"
+            value={editLat}
+            onChange={(e) => setEditLat(e.target.value)}
+            placeholder="e.g. 51.5074"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label><FiMapPin /> Longitude</label>
+          <input
+            type="number"
+            step="any"
+            className="form-input"
+            value={editLng}
+            onChange={(e) => setEditLng(e.target.value)}
+            placeholder="e.g. -0.1278"
+          />
+        </div>
+      </div>
+
       <div className="form-group">
-        <label>Images</label>
+        <label><FiImage /> Images (one URL per line)</label>
         <textarea
           className="form-input"
           value={editImages}
           onChange={(e) => setEditImages(e.target.value)}
-          rows={3}
+          rows={4}
+          placeholder="Enter image URLs, one per line"
         />
         <div className="image-preview">
           {editImages.split('\n').map((url, idx) => (
-            url.trim() && <img key={idx} src={url} alt="Preview" />
+            url.trim() && (
+              <img 
+                key={idx} 
+                src={url} 
+                alt="Preview" 
+                onError={(e) => {
+                  e.target.src = '/static/placeholder.png';
+                }}
+              />
+            )
           ))}
         </div>
       </div>

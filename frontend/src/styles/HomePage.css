@@ -123,6 +123,10 @@
   color: white;
 }
 
+.admin-actions {
+  gap: 1rem;
+}
+
 .admin-dashboard {
   background: #f8f9fa;
   padding: 2rem;
@@ -177,7 +181,7 @@
   padding: 1rem 1.5rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: 2rem 0;
+  margin: 4rem 0;
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;

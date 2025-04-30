@@ -166,3 +166,44 @@
   
   /* You may also keep the social sign in blocks if needed:
      (Removed for brevity in this snippet) */
+@media (max-width: 768px) {
+  .signin-container {
+    flex-direction: column;
+    padding-top: 0;
+    height: auto;
+  }
+
+  .signin-left-panel {
+    padding: 20px;
+    min-height: 200px;
+  }
+
+  .brand-logo {
+    width: 200px;
+    height: 170px;
+    margin: 20px auto;
+  }
+
+  .signin-right-panel {
+    padding: 20px;
+  }
+
+  .signin-form {
+    max-width: 100%;
+  }
+
+  .signin-button {
+    padding: 12px;
+    font-size: 18px;
+  }
+
+  .welcome-text {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .not-member-text {
+    text-align: center;
+    margin: 20px 0;
+  }
+}

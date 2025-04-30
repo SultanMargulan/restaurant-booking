@@ -33,15 +33,16 @@ def create_app(config_class=Config):
     csrf.init_app(app)
 
     # Enable CORS
-    CORS(app, 
-         resources={
-             r"/api/*": {
-                 "origins": ["http://localhost:3000"],
-                 "supports_credentials": True,
-                 "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-             }
-         })
+    CORS(app, resources={r"/api/*": {
+            "origins": [
+                "http://localhost:3000",          # Chrome on your laptop
+                "http://10.0.2.2:3000",           # Android emulator WebView
+                "http://192.168.0.0/16"           # any phone on your LAN
+            ],
+            "supports_credentials": True,
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    }})
 
     # Initialize extensions
     db.init_app(app)

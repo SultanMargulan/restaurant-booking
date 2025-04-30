@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://192.168.0.5:5000/api",
   withCredentials: true // Ensures cookies are sent with requests
 });
 

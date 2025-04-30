@@ -287,3 +287,50 @@
 .booking-confirmation-wrapper {
   margin-top: 20px; /* Ensure spacing between form and confirmation */
 }
+
+/* ----------  BASE: make wrapper fluid  ---------- */
+.booking-page-wrapper{
+  position:relative;
+  width:100%;          /* was 1440px */
+  max-width:1440px;    /* keeps desktop limit */
+  margin:0 auto;
+  padding:0 1rem;
+}
+
+/* ----------  MOBILE  ≤992 px  ---------- */
+@media (max-width: 992px){
+  .booking-header{
+    position:static;
+    transform:none;
+    margin:6rem 0 1rem;
+    font-size:32px;
+    line-height:40px;
+  }
+
+  .booking-form-container{
+    flex-direction:column;
+    width:100%;
+    gap:1.5rem;
+  }
+
+  .booking-form-panel{
+    width:100%;
+    height:auto;       /* let it grow */
+    max-height:70vh;   /* scrolls if needed */
+  }
+
+  .booking-layout-panel{
+    width:100%;
+    height:55vh;       /* responsive preview */
+  }
+
+  .btn-primary{        /* big tap target */
+    font-size:18px;
+  }
+}
+
+/* ----------  very small phones  ≤480 px ---------- */
+@media (max-width: 480px){
+  .booking-header{font-size:26px;}
+  .booking-form-panel{padding:15px;}
+}
